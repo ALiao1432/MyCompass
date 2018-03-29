@@ -131,11 +131,13 @@ public class MainActivity extends AppCompatActivity {
 
         private Paint compassFramePaint = new Paint();
         private Paint compassTextPaint = new Paint();
-        private Path path;
+        private Path path = new Path();
         private int wSize;
         private int hSize;
         private String degree;
         private Rect textRect = new Rect();
+
+        private final float FIX_FRAME_RADIUS = 250;
 
         private CompassView(Context context) {
             super(context);
@@ -153,7 +155,7 @@ public class MainActivity extends AppCompatActivity {
 
         private void initPaint() {
             compassFramePaint.setAntiAlias(true);
-            compassFramePaint.setStrokeWidth(15);
+            compassFramePaint.setStrokeWidth(12);
             compassFramePaint.setStyle(Paint.Style.STROKE);
 
             compassTextPaint.setAntiAlias(true);
@@ -169,22 +171,36 @@ public class MainActivity extends AppCompatActivity {
             // set background color
             canvas.drawColor(Color.parseColor("#212121"));
 
-            drawCompassFixFrame(canvas);
-            drawCompassDegree(canvas);
+            drawFixFrame(canvas);
+            drawDegree(canvas);
         }
 
-        private void drawCompassFixFrame(Canvas canvas) {
+        private void drawFixFrame(Canvas canvas) {
             compassFramePaint.setColor(Color.parseColor("#e0e0e0"));
 
+            setFixFrameScalePath();
             canvas.translate(wSize / 2, hSize / 2);
-            canvas.drawCircle(0, 0, 330, compassFramePaint);
+            canvas.drawCircle(0, 0, FIX_FRAME_RADIUS, compassFramePaint);
+            for (int i = 0; i < 4; i++) {
+                // draw N, E, S, W scale
+                // each time canvas need to rotate 90 degree
+                canvas.drawPath(path, compassFramePaint);
+                canvas.rotate(90);
+            }
         }
 
-        private void drawCompassDegree(Canvas canvas) {
+        private void setFixFrameScalePath() {
+            path.moveTo(-wSize / 100, -FIX_FRAME_RADIUS);
+            path.lineTo(0, -(FIX_FRAME_RADIUS + hSize / 100));
+            path.lineTo(wSize / 100, -FIX_FRAME_RADIUS);
+            path.close();
+        }
+
+        private void drawDegree(Canvas canvas) {
             degree = String.valueOf(intValues[0]);
             compassTextPaint.setColor(Color.parseColor("#757575"));
             compassTextPaint.getTextBounds(degree, 0, degree.length(), textRect);
-            
+
             canvas.drawText(degree, -textRect.width() / 2, textRect.height() / 2, compassTextPaint);
         }
     }
