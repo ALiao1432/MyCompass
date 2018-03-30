@@ -20,8 +20,10 @@ import android.view.View;
 public class MainActivity extends AppCompatActivity {
 
     /*  TO DO
+    *   add degree number transform animation
     *   add GPS data
     *   add find other people's direction
+    *   study wifi indoor
     * */
 
     private static final String TAG = MainActivity.class.getSimpleName();
@@ -31,19 +33,31 @@ public class MainActivity extends AppCompatActivity {
     private Sensor aSensor;
     private CompassView compassView;
 
-    private float[] mSensorValue = new float[3];
-    private float[] aSensorValue = new float[3];
+    private float[] mSensorValue;
+    private float[] aSensorValue;
+    private float[] floatsValues = new float[3];
+    private float[] reverseFloatValue = new float[3];
     private int[] intValues = new int[3];
-
 
     private SensorEventListener listener = new SensorEventListener() {
         @Override
         public void onSensorChanged(SensorEvent sensorEvent) {
+
+            // when sensor has data feedback,
+            // get data by type
             if (sensorEvent.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
-                mSensorValue = sensorEvent.values;
+                mSensorValue = lowPassFilter(sensorEvent.values, mSensorValue);
             }
             if (sensorEvent.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-                aSensorValue = sensorEvent.values;
+                aSensorValue = lowPassFilter(sensorEvent.values, aSensorValue);
+            }
+
+            // prevent mSensorValue or aSensorValue is null
+            if (mSensorValue == null) {
+                mSensorValue = new float[3];
+            }
+            if (aSensorValue == null) {
+                aSensorValue = new float[3];
             }
 //            Log.d(TAG, "mSensorValue : " + mSensorValue[0] + ", " + mSensorValue[1] + ", " + mSensorValue[2]);
 //            Log.d(TAG, "aSensorValue : " + aSensorValue[0] + ", " + aSensorValue[1] + ", " + aSensorValue[2]);
@@ -72,10 +86,21 @@ public class MainActivity extends AppCompatActivity {
             Snackbar.make(layout, "Not support magnetic sensor, exit now?", Snackbar.LENGTH_INDEFINITE)
                     .setAction("OK", view -> finish())
                     .show();
-        } else {
-            sensorManager.registerListener(listener, mSensor, SensorManager.SENSOR_DELAY_NORMAL);
-            sensorManager.registerListener(listener, aSensor, SensorManager.SENSOR_DELAY_NORMAL);
         }
+    }
+
+    // sensor is too sensitive, need a filter to get smooth data
+    private float[] lowPassFilter(float[] input, float[] output) {
+        final float LOW_PASS_FILTER_COEFFICIENT = 0.15f;
+
+        if (output == null) {
+            return input;
+        }
+
+        for (int i = 0; i < input.length; i++) {
+            output[i] = output[i] + LOW_PASS_FILTER_COEFFICIENT * (input[i] - output[i]);
+        }
+        return output;
     }
 
     @Override
@@ -103,26 +128,35 @@ public class MainActivity extends AppCompatActivity {
         SensorManager.getOrientation(R, values);
 
         for (int i = 0; i < values.length; i++) {
-            intValues[i] = (int) Math.toDegrees(values[i]);
+            floatsValues[i] = (float) Math.toDegrees(values[i]);
+            intValues[i] = (int) floatsValues[i];
+
+            if (floatsValues[i] < 0) {
+                floatsValues[i] += 360f;
+            }
             if (intValues[i] < 0) {
                 intValues[i] += 360;
             }
+
+            reverseFloatValue[i] = - floatsValues[i];
         }
         compassView.invalidate();
-//        Log.d(TAG, "values[0] : " + intValues[0] + ",\n" + "values[1] : " + intValues[1] + ",\n" + "values[2] : " + intValues[2]);
     }
 
     @Override
     protected void onResume() {
+        super.onResume();
+
         if (mSensor != null || aSensor != null) {
+//            Log.d(TAG, "register sensor listener");
             sensorManager.registerListener(listener, mSensor, SensorManager.SENSOR_DELAY_UI);
             sensorManager.registerListener(listener, aSensor, SensorManager.SENSOR_DELAY_UI);
         }
-        super.onResume();
     }
 
     @Override
     protected void onPause() {
+//        Log.d(TAG, "unregister sensor listener");
         sensorManager.unregisterListener(listener);
         super.onPause();
     }
@@ -132,12 +166,21 @@ public class MainActivity extends AppCompatActivity {
         private Paint compassFramePaint = new Paint();
         private Paint compassTextPaint = new Paint();
         private Path path = new Path();
-        private int wSize;
-        private int hSize;
         private String degree;
         private Rect textRect = new Rect();
+        private int wSize;
+        private int hSize;
 
         private final float FIX_FRAME_RADIUS = 250;
+        private final float DYNAMIC_FRAME_RADIUS = 300;
+        private final float DYNAMIC_FRAME_SMALL_CIRCLE_RADIUS = 6;
+        private final float DYNAMIC_FRAME_GAP = (float) 360 / 40;
+        private final String[] COMPASS_TEXT = {
+                "N",
+                "E",
+                "S",
+                "W"
+        };
 
         private CompassView(Context context) {
             super(context);
@@ -172,6 +215,7 @@ public class MainActivity extends AppCompatActivity {
             canvas.drawColor(Color.parseColor("#212121"));
 
             drawFixFrame(canvas);
+            drawDynamicFrame(canvas);
             drawDegree(canvas);
         }
 
@@ -190,18 +234,59 @@ public class MainActivity extends AppCompatActivity {
         }
 
         private void setFixFrameScalePath() {
+            path.reset();
             path.moveTo(-wSize / 100, -FIX_FRAME_RADIUS);
             path.lineTo(0, -(FIX_FRAME_RADIUS + hSize / 100));
             path.lineTo(wSize / 100, -FIX_FRAME_RADIUS);
             path.close();
         }
 
+        private void drawDynamicFrame(Canvas canvas) {
+            canvas.rotate(reverseFloatValue[0]);
+
+            compassFramePaint.setTextSize(70);
+            compassFramePaint.setColor(Color.parseColor("#616161"));
+            compassFramePaint.getTextBounds(COMPASS_TEXT[0], 0, 1, textRect);
+
+            canvas.drawCircle(0, 0, DYNAMIC_FRAME_RADIUS, compassFramePaint);
+
+            for (float f = 0; f < 360f; f += DYNAMIC_FRAME_GAP) {
+                if (Math.abs(floatsValues[0] - f) <= 3) {
+                    Log.d(TAG, "f : " + f + ", floatsValues : " + floatsValues[0]);
+                    compassFramePaint.setColor(Color.parseColor("#d32f2f"));
+                } else {
+                    compassFramePaint.setColor(Color.parseColor("#616161"));
+                }
+
+                compassFramePaint.setStrokeWidth(6);
+                compassFramePaint.setStyle(Paint.Style.FILL);
+
+                if (f % 90 == 0) {
+                    canvas.drawText(COMPASS_TEXT[(int) f / 90], -textRect.width() / 2, -(textRect.height() / 2 + DYNAMIC_FRAME_RADIUS * 1.1f), compassFramePaint);
+                } else {
+                    if (f % 45 == 0) {
+                        canvas.drawCircle(0, -(textRect.height() / 2 + DYNAMIC_FRAME_RADIUS * 1.15f), DYNAMIC_FRAME_SMALL_CIRCLE_RADIUS * 2f, compassFramePaint);
+                    } else {
+                        canvas.drawCircle(0, -(textRect.height() / 2 + DYNAMIC_FRAME_RADIUS * 1.15f), DYNAMIC_FRAME_SMALL_CIRCLE_RADIUS, compassFramePaint);
+                    }
+                }
+
+                canvas.rotate(DYNAMIC_FRAME_GAP);
+            }
+
+            compassFramePaint.setStyle(Paint.Style.STROKE);
+            compassFramePaint.setStrokeWidth(12);
+
+            canvas.rotate(-reverseFloatValue[0]);
+        }
+
         private void drawDegree(Canvas canvas) {
-            degree = String.valueOf(intValues[0]);
+            degree = String.valueOf((int) Math.abs(reverseFloatValue[0]));
             compassTextPaint.setColor(Color.parseColor("#757575"));
             compassTextPaint.getTextBounds(degree, 0, degree.length(), textRect);
 
             canvas.drawText(degree, -textRect.width() / 2, textRect.height() / 2, compassTextPaint);
+            textRect.setEmpty();
         }
     }
 }
