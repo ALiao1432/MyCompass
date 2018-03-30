@@ -1,6 +1,8 @@
 package com.example.ian.mycompass;
 
+import android.Manifest;
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -10,12 +12,18 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.os.Process;
+import android.support.annotation.NonNull;
 import android.support.constraint.ConstraintLayout;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -24,10 +32,12 @@ public class MainActivity extends AppCompatActivity {
     *   add GPS data
     *   add find other people's direction
     *   study wifi indoor
+    *   add sensor calibration function
     * */
 
     private static final String TAG = MainActivity.class.getSimpleName();
 
+    private FusedLocationProviderClient fusedLocationProviderClient;
     private SensorManager sensorManager;
     private Sensor mSensor;
     private Sensor aSensor;
@@ -37,7 +47,11 @@ public class MainActivity extends AppCompatActivity {
     private float[] aSensorValue;
     private float[] floatsValues = new float[3];
     private float[] reverseFloatValue = new float[3];
+    private double[] gpsCoordinates = new double[2]; // 0 : latitude, 1 : longitude
     private int[] intValues = new int[3];
+    private boolean hasPermission = false;
+
+    private final int MY_COARSE_LOCATION_REQUEST_CODE = 999;
 
     private SensorEventListener listener = new SensorEventListener() {
         @Override
@@ -74,10 +88,16 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        compassView = new CompassView(this);
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(MainActivity.this);
         ConstraintLayout layout = findViewById(R.id.mainLayout);
+        compassView = new CompassView(this);
 
         setContentView(compassView);
+
+        // check if user grant the permission
+        if (this.checkPermission(Manifest.permission.ACCESS_COARSE_LOCATION, Process.myPid(), Process.myUid()) == PackageManager.PERMISSION_DENIED) {
+            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, MY_COARSE_LOCATION_REQUEST_CODE);
+        }
 
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         mSensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
@@ -86,6 +106,23 @@ public class MainActivity extends AppCompatActivity {
             Snackbar.make(layout, "Not support magnetic sensor, exit now?", Snackbar.LENGTH_INDEFINITE)
                     .setAction("OK", view -> finish())
                     .show();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (this.checkPermission(Manifest.permission.ACCESS_COARSE_LOCATION, Process.myPid(), Process.myUid()) == PackageManager.PERMISSION_GRANTED) {
+            hasPermission = true;
+            fusedLocationProviderClient.getLastLocation()
+                    .addOnSuccessListener(this, location -> {
+                        if (location != null) {
+                            gpsCoordinates[0] = location.getLongitude();
+                            gpsCoordinates[1] = location.getLatitude();
+//                            Log.d(TAG, "gpsCoordinates : " + gpsCoordinates[0] + ", " + gpsCoordinates[1]);
+                        }
+                    });
         }
     }
 
@@ -152,6 +189,18 @@ public class MainActivity extends AppCompatActivity {
             sensorManager.registerListener(listener, mSensor, SensorManager.SENSOR_DELAY_UI);
             sensorManager.registerListener(listener, aSensor, SensorManager.SENSOR_DELAY_UI);
         }
+
+        if (this.checkPermission(Manifest.permission.ACCESS_COARSE_LOCATION, Process.myPid(), Process.myUid()) == PackageManager.PERMISSION_GRANTED) {
+            hasPermission = true;
+            fusedLocationProviderClient.getLastLocation()
+                    .addOnSuccessListener(this, location -> {
+                        if (location != null) {
+                            gpsCoordinates[0] = location.getLatitude();
+                            gpsCoordinates[1] = location.getLongitude();
+                            Log.d(TAG, "gpsCoordinates : " + gpsCoordinates[0] + ", " + gpsCoordinates[1]);
+                        }
+                    });
+        }
     }
 
     @Override
@@ -217,6 +266,7 @@ public class MainActivity extends AppCompatActivity {
             drawFixFrame(canvas);
             drawDynamicFrame(canvas);
             drawDegree(canvas);
+            drawLatitudeLongitude(canvas);
         }
 
         private void drawFixFrame(Canvas canvas) {
@@ -251,8 +301,7 @@ public class MainActivity extends AppCompatActivity {
             canvas.drawCircle(0, 0, DYNAMIC_FRAME_RADIUS, compassFramePaint);
 
             for (float f = 0; f < 360f; f += DYNAMIC_FRAME_GAP) {
-                if (Math.abs(floatsValues[0] - f) <= 3) {
-                    Log.d(TAG, "f : " + f + ", floatsValues : " + floatsValues[0]);
+                if (Math.abs(floatsValues[0] - f) <= DYNAMIC_FRAME_GAP / 2) {
                     compassFramePaint.setColor(Color.parseColor("#d32f2f"));
                 } else {
                     compassFramePaint.setColor(Color.parseColor("#616161"));
@@ -277,6 +326,7 @@ public class MainActivity extends AppCompatActivity {
             compassFramePaint.setStyle(Paint.Style.STROKE);
             compassFramePaint.setStrokeWidth(12);
 
+            textRect.setEmpty();
             canvas.rotate(-reverseFloatValue[0]);
         }
 
@@ -287,6 +337,47 @@ public class MainActivity extends AppCompatActivity {
 
             canvas.drawText(degree, -textRect.width() / 2, textRect.height() / 2, compassTextPaint);
             textRect.setEmpty();
+        }
+
+        private void drawLatitudeLongitude(Canvas canvas) {
+
+            if (hasPermission) {
+                compassTextPaint.setTextSize(50);
+
+                // latitude
+                String coordinate = String.valueOf(gpsCoordinates[0]);
+                coordinate =  addNESWBaseOnCoordinate(0, coordinate);
+                compassTextPaint.getTextBounds(coordinate, 0, coordinate.length(), textRect);
+                canvas.drawText(coordinate, -textRect.width() / 2, hSize / 2, compassTextPaint);
+
+                // longitude
+                coordinate = String.valueOf(gpsCoordinates[1]);
+                coordinate =  addNESWBaseOnCoordinate(1, coordinate);
+                compassTextPaint.getTextBounds(coordinate, 0, coordinate.length(), textRect);
+                canvas.drawText(coordinate, -textRect.width() / 2, hSize / 2 - textRect.height(), compassTextPaint);
+
+                compassTextPaint.setTextSize(200);
+            }
+        }
+
+        private String addNESWBaseOnCoordinate(int latOrLong, String c) {
+            if (latOrLong == 0) {
+                // latitude
+                if (c.startsWith("-")) {
+                    c += " S";
+                } else {
+                    c += " N";
+                }
+            } else {
+                // longitude
+                if (c.startsWith("-")) {
+                    c += " W";
+                } else {
+                    c += " E";
+                }
+            }
+
+            return c;
         }
     }
 }
