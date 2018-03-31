@@ -2,6 +2,7 @@ package com.example.ian.mycompass;
 
 import android.Manifest;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -13,8 +14,10 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Location;
+import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
+import android.os.ResultReceiver;
 import android.support.annotation.NonNull;
 import android.support.constraint.ConstraintLayout;
 import android.support.design.widget.Snackbar;
@@ -48,6 +51,9 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
 
     private FusedLocationProviderClient fusedLocationProviderClient;
+    private LocationCallback locationCallback;
+    private Location lastLocation;
+    private ResultReceiver resultReceiver;
     private SensorManager sensorManager;
     private Sensor mSensor;
     private Sensor aSensor;
@@ -60,6 +66,8 @@ public class MainActivity extends AppCompatActivity {
     private double[] gpsCoordinates = new double[2]; // 0 : latitude, 1 : longitude
     private int[] intValues = new int[3];
     private boolean hasPermission = false;
+    private boolean isGetAddressSuccess = false;
+    private String addressOutput = "";
 
     private SensorEventListener listener = new SensorEventListener() {
         @Override
@@ -99,9 +107,30 @@ public class MainActivity extends AppCompatActivity {
         final int MY_COARSE_LOCATION_REQUEST_CODE = 999;
         final int MY_FINE_LOCATION_REQUEST_CODE = 998;
 
-        fusedLocationProviderClient = getFusedLocationProviderClient(MainActivity.this);
         ConstraintLayout layout = findViewById(R.id.mainLayout);
+        fusedLocationProviderClient = getFusedLocationProviderClient(MainActivity.this);
         compassView = new CompassView(this);
+        resultReceiver = new ResultReceiver(new Handler()) {
+            @Override
+            protected void onReceiveResult(int resultCode, Bundle resultData) {
+                if (resultData == null) {
+                    return;
+                }
+
+                addressOutput = resultData.getString(GeoConstants.RESULT_DATA_KEY);
+                if (addressOutput == null) {
+                    addressOutput = "";
+                }
+
+                if (resultCode == GeoConstants.SUCCESS_RESULT) {
+                    Log.d(TAG, "found address successful : " + addressOutput);
+//                    addressOutput = splitString(addressOutput);
+                    isGetAddressSuccess = true;
+                } else  if (resultCode == GeoConstants.FAILURE_RESULT) {
+                    addressOutput = "...";
+                }
+            }
+        };
 
         setContentView(compassView);
 
@@ -123,6 +152,22 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+//    private String splitString(String s) {
+//        StringTokenizer stringTokenizer = new StringTokenizer(s, ",");
+//        StringBuilder stringBuilder = new StringBuilder();
+//        int splitCount = stringTokenizer.countTokens();
+//
+//        for (int i = 0; i < splitCount; i++) {
+//            if (i % (splitCount / 2) == 0) {
+//                stringBuilder.append(stringTokenizer.nextToken()).append(", ");
+//            } else {
+//                stringBuilder.append(",\n").append(stringTokenizer.nextToken());
+//            }
+//        }
+//
+//        return stringBuilder.toString();
+//    }
+
     private void startLocationUpdates() {
 
         final long LOCATION_REQUEST_INTERVAL = 1000 * 60; // 60 sec
@@ -142,7 +187,7 @@ public class MainActivity extends AppCompatActivity {
         SettingsClient settingsClient = LocationServices.getSettingsClient(this);
         settingsClient.checkLocationSettings(locationSettingsRequest);
 
-        LocationCallback locationCallback = new LocationCallback() {
+        locationCallback = new LocationCallback() {
             @Override
             public void onLocationResult(LocationResult locationResult) {
                 // do work here
@@ -155,12 +200,22 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void startLatLongToAddressService() {
+        Intent intent = new Intent(this, FetchAddressIntentService.class);
+        intent.putExtra(GeoConstants.RECEIVER, resultReceiver);
+        intent.putExtra(GeoConstants.LOCATION_DATA_EXTRA, lastLocation);
+        startService(intent);
+    }
+
     private void onLocationChanged(List<Location> locationList) {
         // new location has now been updated
         for (Location l : locationList) {
             Log.d(TAG, "update location : " + l.getLongitude() + ", " + l.getLatitude());
             gpsCoordinates[0] = l.getLatitude();
             gpsCoordinates[1] = l.getLongitude();
+
+            lastLocation = l;
+            startLatLongToAddressService();
         }
     }
 
@@ -246,6 +301,8 @@ public class MainActivity extends AppCompatActivity {
                 hasPermission = true;
                 startLocationUpdates();
             }
+        } else {
+            startLocationUpdates();
         }
     }
 
@@ -273,6 +330,7 @@ public class MainActivity extends AppCompatActivity {
         super.onPause();
 //        Log.d(TAG, "unregister sensor listener");
         sensorManager.unregisterListener(listener);
+        fusedLocationProviderClient.removeLocationUpdates(locationCallback);
     }
 
     private class CompassView extends View {
@@ -332,6 +390,7 @@ public class MainActivity extends AppCompatActivity {
             drawDynamicFrame(canvas);
             drawDegree(canvas);
             drawLatitudeLongitude(canvas);
+            drawAddress(canvas);
         }
 
         private void drawFixFrame(Canvas canvas) {
@@ -422,6 +481,7 @@ public class MainActivity extends AppCompatActivity {
                 canvas.drawText(coordinate, -textRect.width() / 2, hSize / 2 - textRect.height(), compassTextPaint);
 
                 compassTextPaint.setTextSize(200);
+                textRect.setEmpty();
             }
         }
 
@@ -443,6 +503,18 @@ public class MainActivity extends AppCompatActivity {
             }
 
             return c;
+        }
+
+        private void drawAddress(Canvas canvas) {
+            if (hasPermission && isGetAddressSuccess) {
+                compassTextPaint.setTextSize(50);
+
+                compassTextPaint.getTextBounds(addressOutput, 0, addressOutput.length(), textRect);
+                canvas.drawText(addressOutput, -textRect.width() / 2, hSize / 2 - textRect.height() * 4, compassTextPaint);
+
+                compassTextPaint.setTextSize(200);
+                textRect.setEmpty();
+            }
         }
     }
 }
