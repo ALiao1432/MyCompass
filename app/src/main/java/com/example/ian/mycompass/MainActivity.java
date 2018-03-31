@@ -12,6 +12,8 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Location;
+import android.os.Looper;
 import android.os.Process;
 import android.support.annotation.NonNull;
 import android.support.constraint.ConstraintLayout;
@@ -23,7 +25,16 @@ import android.util.Log;
 import android.view.View;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.LocationSettingsRequest;
+import com.google.android.gms.location.SettingsClient;
+
+import java.util.List;
+
+import static com.google.android.gms.location.LocationServices.getFusedLocationProviderClient;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -38,6 +49,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
 
     private FusedLocationProviderClient fusedLocationProviderClient;
+    private LocationRequest locationRequest;
     private SensorManager sensorManager;
     private Sensor mSensor;
     private Sensor aSensor;
@@ -51,7 +63,8 @@ public class MainActivity extends AppCompatActivity {
     private int[] intValues = new int[3];
     private boolean hasPermission = false;
 
-    private final int MY_COARSE_LOCATION_REQUEST_CODE = 999;
+    private final long LOCATION_REQUEST_INTERVAL = 1000 * 69; // 60 sec
+    private final long LOCATION_REQUEST_FASTEST_INTERVAL = LOCATION_REQUEST_INTERVAL / 2;
 
     private SensorEventListener listener = new SensorEventListener() {
         @Override
@@ -88,7 +101,10 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(MainActivity.this);
+        final int MY_COARSE_LOCATION_REQUEST_CODE = 999;
+        final int MY_FINE_LOCATION_REQUEST_CODE = 998;
+
+        fusedLocationProviderClient = getFusedLocationProviderClient(MainActivity.this);
         ConstraintLayout layout = findViewById(R.id.mainLayout);
         compassView = new CompassView(this);
 
@@ -98,6 +114,12 @@ public class MainActivity extends AppCompatActivity {
         if (this.checkPermission(Manifest.permission.ACCESS_COARSE_LOCATION, Process.myPid(), Process.myUid()) == PackageManager.PERMISSION_DENIED) {
             ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, MY_COARSE_LOCATION_REQUEST_CODE);
         }
+
+        if (this.checkPermission(Manifest.permission.ACCESS_FINE_LOCATION, Process.myPid(), Process.myUid()) == PackageManager.PERMISSION_DENIED) {
+            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, MY_FINE_LOCATION_REQUEST_CODE);
+        }
+
+        startLocationUpdates();
 
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         mSensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
@@ -109,21 +131,48 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void startLocationUpdates() {
+
+        // create the location request to start receiving updates
+        locationRequest =  LocationRequest.create()
+                .setInterval(LOCATION_REQUEST_INTERVAL)
+                .setFastestInterval(LOCATION_REQUEST_FASTEST_INTERVAL)
+                .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+
+        // create LocationSettingsRequest object using location request
+        LocationSettingsRequest.Builder requestBuilder = new LocationSettingsRequest.Builder().addLocationRequest(locationRequest);
+        LocationSettingsRequest locationSettingsRequest = requestBuilder.build();
+
+        // check whether location settings are satisfied
+        SettingsClient settingsClient = LocationServices.getSettingsClient(this);
+        settingsClient.checkLocationSettings(locationSettingsRequest);
+
+        if (this.checkPermission(Manifest.permission.ACCESS_FINE_LOCATION, Process.myPid(), Process.myUid()) == PackageManager.PERMISSION_GRANTED) {
+            getFusedLocationProviderClient(this).requestLocationUpdates(locationRequest, new LocationCallback() {
+                        @Override
+                        public void onLocationResult(LocationResult locationResult) {
+                            // do work here
+                            onLocationChanged(locationResult.getLocations());
+                        }
+                    },
+                    Looper.myLooper());
+        }
+    }
+
+    private void onLocationChanged(List<Location> locationList) {
+        // new location has now been updated
+        for (Location l : locationList) {
+            Log.d(TAG, "update location : " + l.getLongitude() + ", " + l.getLatitude());
+            gpsCoordinates[0] = l.getLatitude();
+            gpsCoordinates[1] = l.getLongitude();
+        }
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        if (this.checkPermission(Manifest.permission.ACCESS_COARSE_LOCATION, Process.myPid(), Process.myUid()) == PackageManager.PERMISSION_GRANTED) {
-            hasPermission = true;
-            fusedLocationProviderClient.getLastLocation()
-                    .addOnSuccessListener(this, location -> {
-                        if (location != null) {
-                            gpsCoordinates[0] = location.getLongitude();
-                            gpsCoordinates[1] = location.getLatitude();
-//                            Log.d(TAG, "gpsCoordinates : " + gpsCoordinates[0] + ", " + gpsCoordinates[1]);
-                        }
-                    });
-        }
+        checkIfPermissionGranted(Manifest.permission.ACCESS_COARSE_LOCATION);
     }
 
     // sensor is too sensitive, need a filter to get smooth data
@@ -190,7 +239,11 @@ public class MainActivity extends AppCompatActivity {
             sensorManager.registerListener(listener, aSensor, SensorManager.SENSOR_DELAY_UI);
         }
 
-        if (this.checkPermission(Manifest.permission.ACCESS_COARSE_LOCATION, Process.myPid(), Process.myUid()) == PackageManager.PERMISSION_GRANTED) {
+        checkIfPermissionGranted(Manifest.permission.ACCESS_COARSE_LOCATION);
+    }
+
+    private void checkIfPermissionGranted(final String permission) {
+        if (this.checkPermission(permission, Process.myPid(), Process.myUid()) == PackageManager.PERMISSION_GRANTED) {
             hasPermission = true;
             fusedLocationProviderClient.getLastLocation()
                     .addOnSuccessListener(this, location -> {
@@ -205,9 +258,9 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onPause() {
+        super.onPause();
 //        Log.d(TAG, "unregister sensor listener");
         sensorManager.unregisterListener(listener);
-        super.onPause();
     }
 
     private class CompassView extends View {
