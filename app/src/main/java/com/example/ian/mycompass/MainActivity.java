@@ -40,7 +40,6 @@ public class MainActivity extends AppCompatActivity {
 
     /*  TO DO
     *   add degree number transform animation
-    *   add GPS data
     *   add find other people's direction
     *   study wifi indoor
     *   add sensor calibration function
@@ -49,7 +48,6 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
 
     private FusedLocationProviderClient fusedLocationProviderClient;
-    private LocationRequest locationRequest;
     private SensorManager sensorManager;
     private Sensor mSensor;
     private Sensor aSensor;
@@ -62,9 +60,6 @@ public class MainActivity extends AppCompatActivity {
     private double[] gpsCoordinates = new double[2]; // 0 : latitude, 1 : longitude
     private int[] intValues = new int[3];
     private boolean hasPermission = false;
-
-    private final long LOCATION_REQUEST_INTERVAL = 1000 * 69; // 60 sec
-    private final long LOCATION_REQUEST_FASTEST_INTERVAL = LOCATION_REQUEST_INTERVAL / 2;
 
     private SensorEventListener listener = new SensorEventListener() {
         @Override
@@ -114,12 +109,9 @@ public class MainActivity extends AppCompatActivity {
         if (this.checkPermission(Manifest.permission.ACCESS_COARSE_LOCATION, Process.myPid(), Process.myUid()) == PackageManager.PERMISSION_DENIED) {
             ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, MY_COARSE_LOCATION_REQUEST_CODE);
         }
-
         if (this.checkPermission(Manifest.permission.ACCESS_FINE_LOCATION, Process.myPid(), Process.myUid()) == PackageManager.PERMISSION_DENIED) {
             ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, MY_FINE_LOCATION_REQUEST_CODE);
         }
-
-        startLocationUpdates();
 
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         mSensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
@@ -133,8 +125,11 @@ public class MainActivity extends AppCompatActivity {
 
     private void startLocationUpdates() {
 
+        final long LOCATION_REQUEST_INTERVAL = 1000 * 60; // 60 sec
+        final long LOCATION_REQUEST_FASTEST_INTERVAL = LOCATION_REQUEST_INTERVAL / 2;
+
         // create the location request to start receiving updates
-        locationRequest =  LocationRequest.create()
+        LocationRequest locationRequest =  LocationRequest.create()
                 .setInterval(LOCATION_REQUEST_INTERVAL)
                 .setFastestInterval(LOCATION_REQUEST_FASTEST_INTERVAL)
                 .setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
@@ -147,15 +142,16 @@ public class MainActivity extends AppCompatActivity {
         SettingsClient settingsClient = LocationServices.getSettingsClient(this);
         settingsClient.checkLocationSettings(locationSettingsRequest);
 
+        LocationCallback locationCallback = new LocationCallback() {
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                // do work here
+                onLocationChanged(locationResult.getLocations());
+            }
+        };
+
         if (this.checkPermission(Manifest.permission.ACCESS_FINE_LOCATION, Process.myPid(), Process.myUid()) == PackageManager.PERMISSION_GRANTED) {
-            getFusedLocationProviderClient(this).requestLocationUpdates(locationRequest, new LocationCallback() {
-                        @Override
-                        public void onLocationResult(LocationResult locationResult) {
-                            // do work here
-                            onLocationChanged(locationResult.getLocations());
-                        }
-                    },
-                    Looper.myLooper());
+            getFusedLocationProviderClient(this).requestLocationUpdates(locationRequest, locationCallback, Looper.myLooper());
         }
     }
 
@@ -172,7 +168,11 @@ public class MainActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
 
-        checkIfPermissionGranted(Manifest.permission.ACCESS_COARSE_LOCATION);
+        if (checkIfPermissionGranted(Manifest.permission.ACCESS_COARSE_LOCATION)
+                && checkIfPermissionGranted(Manifest.permission.ACCESS_FINE_LOCATION)) {
+            hasPermission = true;
+            startLocationUpdates();
+        }
     }
 
     // sensor is too sensitive, need a filter to get smooth data
@@ -239,21 +239,33 @@ public class MainActivity extends AppCompatActivity {
             sensorManager.registerListener(listener, aSensor, SensorManager.SENSOR_DELAY_UI);
         }
 
-        checkIfPermissionGranted(Manifest.permission.ACCESS_COARSE_LOCATION);
+        // need to check the permission in onResume() when hasPermission is false
+        if (!hasPermission) {
+            if (checkIfPermissionGranted(Manifest.permission.ACCESS_COARSE_LOCATION)
+                    && checkIfPermissionGranted(Manifest.permission.ACCESS_FINE_LOCATION)) {
+                hasPermission = true;
+                startLocationUpdates();
+            }
+        }
     }
 
-    private void checkIfPermissionGranted(final String permission) {
+    private boolean checkIfPermissionGranted(final String permission) {
         if (this.checkPermission(permission, Process.myPid(), Process.myUid()) == PackageManager.PERMISSION_GRANTED) {
-            hasPermission = true;
-            fusedLocationProviderClient.getLastLocation()
-                    .addOnSuccessListener(this, location -> {
-                        if (location != null) {
-                            gpsCoordinates[0] = location.getLatitude();
-                            gpsCoordinates[1] = location.getLongitude();
-                            Log.d(TAG, "gpsCoordinates : " + gpsCoordinates[0] + ", " + gpsCoordinates[1]);
-                        }
-                    });
+            switch (permission) {
+                case Manifest.permission.ACCESS_COARSE_LOCATION:
+                    fusedLocationProviderClient.getLastLocation()
+                            .addOnSuccessListener(this, location -> {
+                                if (location != null) {
+                                    gpsCoordinates[0] = location.getLatitude();
+                                    gpsCoordinates[1] = location.getLongitude();
+                                    Log.d(TAG, "gpsCoordinates : " + gpsCoordinates[0] + ", " + gpsCoordinates[1]);
+                                }
+                            });
+                    break;
+            }
+            return true;
         }
+        return false;
     }
 
     @Override
