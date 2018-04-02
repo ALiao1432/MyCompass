@@ -35,7 +35,7 @@ public class FetchAddressIntentService extends IntentService {
 
         String errorMessage = "";
         List<Address> addresses = null;
-        Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+        Geocoder geocoder = new Geocoder(this, Locale.TAIWAN);
         Location location = intent.getParcelableExtra(GeoConstants.LOCATION_DATA_EXTRA);
         resultReceiver = intent.getParcelableExtra(GeoConstants.RECEIVER);
 

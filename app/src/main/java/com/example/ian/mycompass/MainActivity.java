@@ -124,7 +124,6 @@ public class MainActivity extends AppCompatActivity {
 
                 if (resultCode == GeoConstants.SUCCESS_RESULT) {
                     Log.d(TAG, "found address successful : " + addressOutput);
-//                    addressOutput = splitString(addressOutput);
                     isGetAddressSuccess = true;
                 } else  if (resultCode == GeoConstants.FAILURE_RESULT) {
                     addressOutput = "...";
@@ -151,22 +150,6 @@ public class MainActivity extends AppCompatActivity {
                     .show();
         }
     }
-
-//    private String splitString(String s) {
-//        StringTokenizer stringTokenizer = new StringTokenizer(s, ",");
-//        StringBuilder stringBuilder = new StringBuilder();
-//        int splitCount = stringTokenizer.countTokens();
-//
-//        for (int i = 0; i < splitCount; i++) {
-//            if (i % (splitCount / 2) == 0) {
-//                stringBuilder.append(stringTokenizer.nextToken()).append(", ");
-//            } else {
-//                stringBuilder.append(",\n").append(stringTokenizer.nextToken());
-//            }
-//        }
-//
-//        return stringBuilder.toString();
-//    }
 
     private void startLocationUpdates() {
 
@@ -330,7 +313,6 @@ public class MainActivity extends AppCompatActivity {
         super.onPause();
 //        Log.d(TAG, "unregister sensor listener");
         sensorManager.unregisterListener(listener);
-        fusedLocationProviderClient.removeLocationUpdates(locationCallback);
     }
 
     private class CompassView extends View {
