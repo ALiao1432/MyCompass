@@ -51,7 +51,6 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
 
     private FusedLocationProviderClient fusedLocationProviderClient;
-    private LocationCallback locationCallback;
     private Location lastLocation;
     private ResultReceiver resultReceiver;
     private SensorManager sensorManager;
@@ -153,6 +152,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void startLocationUpdates() {
 
+        LocationCallback locationCallback;
         final long LOCATION_REQUEST_INTERVAL = 1000 * 60; // 60 sec
         final long LOCATION_REQUEST_FASTEST_INTERVAL = LOCATION_REQUEST_INTERVAL / 2;
 
@@ -407,7 +407,9 @@ public class MainActivity extends AppCompatActivity {
             canvas.drawCircle(0, 0, DYNAMIC_FRAME_RADIUS, compassFramePaint);
 
             for (float f = 0; f < 360f; f += DYNAMIC_FRAME_GAP) {
-                if (Math.abs(floatsValues[0] - f) <= DYNAMIC_FRAME_GAP / 2) {
+                if (Math.abs(floatsValues[0] - f) <= DYNAMIC_FRAME_GAP / 2
+                        || (Math.abs(floatsValues[0] - f) < 360 && (Math.abs(floatsValues[0] -f) > 355.5f))) {
+                    Log.d(TAG, "floatsValues[0] : " + floatsValues[0] + ", f : " + f);
                     compassFramePaint.setColor(Color.parseColor("#d32f2f"));
                 } else {
                     compassFramePaint.setColor(Color.parseColor("#616161"));
@@ -454,13 +456,13 @@ public class MainActivity extends AppCompatActivity {
                 String coordinate = String.valueOf(gpsCoordinates[0]);
                 coordinate =  addNESWBaseOnCoordinate(0, coordinate);
                 compassTextPaint.getTextBounds(coordinate, 0, coordinate.length(), textRect);
-                canvas.drawText(coordinate, -textRect.width() / 2, hSize / 2, compassTextPaint);
+                canvas.drawText(coordinate, -textRect.width() / 2, hSize / 2.01f, compassTextPaint);
 
                 // longitude
                 coordinate = String.valueOf(gpsCoordinates[1]);
                 coordinate =  addNESWBaseOnCoordinate(1, coordinate);
                 compassTextPaint.getTextBounds(coordinate, 0, coordinate.length(), textRect);
-                canvas.drawText(coordinate, -textRect.width() / 2, hSize / 2 - textRect.height(), compassTextPaint);
+                canvas.drawText(coordinate, -textRect.width() / 2, hSize / 2 - textRect.height() * 1.4f, compassTextPaint);
 
                 compassTextPaint.setTextSize(200);
                 textRect.setEmpty();
@@ -492,7 +494,7 @@ public class MainActivity extends AppCompatActivity {
                 compassTextPaint.setTextSize(50);
 
                 compassTextPaint.getTextBounds(addressOutput, 0, addressOutput.length(), textRect);
-                canvas.drawText(addressOutput, -textRect.width() / 2, hSize / 2 - textRect.height() * 4, compassTextPaint);
+                canvas.drawText(addressOutput, -textRect.width() / 2, hSize / 2 - textRect.height() * 6, compassTextPaint);
 
                 compassTextPaint.setTextSize(200);
                 textRect.setEmpty();
