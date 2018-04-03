@@ -372,8 +372,8 @@ public class MainActivity extends AppCompatActivity {
             textPaint.setStyle(Paint.Style.FILL);
 
             xyPaint.setAntiAlias(true);
-            xyPaint.setStrokeWidth(2);
             xyPaint.setStrokeCap(Paint.Cap.ROUND);
+            xyPaint.setStrokeWidth(2);
             xyPaint.setColor(Color.parseColor("#bdbdbd"));
         }
 
@@ -382,11 +382,12 @@ public class MainActivity extends AppCompatActivity {
             super.onDraw(canvas);
 
             // set background color
-            canvas.drawColor(Color.parseColor("#212121"));
+            canvas.drawColor(Color.parseColor("#111111"));
 
             drawFixFrame(canvas);
             drawDynamicFrame(canvas);
             drawDegree(canvas);
+            drawXYChartHint(canvas);
             drawXYChart(canvas);
             drawLatitudeLongitude(canvas);
             drawAddress(canvas);
@@ -464,21 +465,35 @@ public class MainActivity extends AppCompatActivity {
             textRect.setEmpty();
         }
 
+        private void drawXYChartHint(Canvas canvas) {
+            xyPaint.setColor(Color.parseColor("#616161"));
+            xyPaint.setStrokeWidth(1);
+            xyPaint.setTextSize(30);
+
+            for (int i = 0; i <= 360; i += 90) {
+                canvas.drawText(String.valueOf(i), wSize * .285f, -i - hSize * .256f, xyPaint);
+                canvas.drawLine(-wSize * .28f, -i - hSize * 0.26f, wSize * .28f, -i - hSize * .26f, xyPaint);
+            }
+
+            xyPaint.setStrokeWidth(2);
+            xyPaint.setColor(Color.parseColor("#bdbdbd"));
+        }
+
         private void drawXYChart(Canvas canvas) {
             if (compassPoint.size() == 0) {
                 initPoints();
             }
             compassPoint.remove(0);
-            compassPoint.add(-hSize * 0.26f + reverseFloatValue[0]);
+            compassPoint.add(-hSize * .26f + reverseFloatValue[0]);
 
             for (int i = 1; i < compassPoint.size(); i++) {
-                canvas.drawLine((i - 1) - wSize * 0.25f, compassPoint.get(i - 1), i - wSize * 0.25f, compassPoint.get(i), xyPaint);
+                canvas.drawLine((i - 1) - wSize * .25f, compassPoint.get(i - 1), i - wSize * .25f, compassPoint.get(i), xyPaint);
             }
         }
 
         private void initPoints() {
             for (int i = 0; i < wSize / 2; i ++) {
-                compassPoint.add(-hSize * 0.26f);
+                compassPoint.add(-hSize * .26f);
             }
         }
 
