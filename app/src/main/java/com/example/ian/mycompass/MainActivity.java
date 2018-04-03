@@ -35,6 +35,7 @@ import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.SettingsClient;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.google.android.gms.location.LocationServices.getFusedLocationProviderClient;
@@ -42,6 +43,7 @@ import static com.google.android.gms.location.LocationServices.getFusedLocationP
 public class MainActivity extends AppCompatActivity {
 
     /*  TO DO
+    *   draw x-y graph
     *   add degree number transform animation
     *   add find other people's direction
     *   study wifi indoor
@@ -95,7 +97,12 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onAccuracyChanged(Sensor sensor, int i) {
-
+            if (sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
+                Log.d(TAG, "mSensor accuracy : " + i);
+            }
+            if (sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+                Log.d(TAG, "aSensor accuracy : " + i);
+            }
         }
     };
 
@@ -317,9 +324,11 @@ public class MainActivity extends AppCompatActivity {
 
     private class CompassView extends View {
 
-        private Paint compassFramePaint = new Paint();
-        private Paint compassTextPaint = new Paint();
+        private Paint framePaint = new Paint();
+        private Paint textPaint = new Paint();
+        private Paint xyPaint = new Paint();
         private Path path = new Path();
+        private List<Float> compassPoint = new ArrayList<>();
         private String degree;
         private Rect textRect = new Rect();
         private int wSize;
@@ -339,7 +348,7 @@ public class MainActivity extends AppCompatActivity {
         private CompassView(Context context) {
             super(context);
 
-            initPaint();
+            initPaints();
         }
 
         @Override
@@ -350,15 +359,22 @@ public class MainActivity extends AppCompatActivity {
             setMeasuredDimension(wSize, hSize);
         }
 
-        private void initPaint() {
-            compassFramePaint.setAntiAlias(true);
-            compassFramePaint.setStrokeWidth(12);
-            compassFramePaint.setStyle(Paint.Style.STROKE);
+        private void initPaints() {
+            framePaint.setAntiAlias(true);
+            framePaint.setStrokeWidth(12);
+            framePaint.setStrokeCap(Paint.Cap.ROUND);
+            framePaint.setStyle(Paint.Style.STROKE);
 
-            compassTextPaint.setAntiAlias(true);
-            compassTextPaint.setStrokeWidth(15);
-            compassTextPaint.setTextSize(200);
-            compassTextPaint.setStyle(Paint.Style.FILL);
+            textPaint.setAntiAlias(true);
+            textPaint.setStrokeWidth(15);
+            textPaint.setTextSize(200);
+            textPaint.setStrokeCap(Paint.Cap.ROUND);
+            textPaint.setStyle(Paint.Style.FILL);
+
+            xyPaint.setAntiAlias(true);
+            xyPaint.setStrokeWidth(2);
+            xyPaint.setStrokeCap(Paint.Cap.ROUND);
+            xyPaint.setColor(Color.parseColor("#bdbdbd"));
         }
 
         @Override
@@ -371,20 +387,21 @@ public class MainActivity extends AppCompatActivity {
             drawFixFrame(canvas);
             drawDynamicFrame(canvas);
             drawDegree(canvas);
+            drawXYChart(canvas);
             drawLatitudeLongitude(canvas);
             drawAddress(canvas);
         }
 
         private void drawFixFrame(Canvas canvas) {
-            compassFramePaint.setColor(Color.parseColor("#e0e0e0"));
+            framePaint.setColor(Color.parseColor("#e0e0e0"));
 
             setFixFrameScalePath();
             canvas.translate(wSize / 2, hSize / 2);
-            canvas.drawCircle(0, 0, FIX_FRAME_RADIUS, compassFramePaint);
+            canvas.drawCircle(0, 0, FIX_FRAME_RADIUS, framePaint);
             for (int i = 0; i < 4; i++) {
                 // draw N, E, S, W scale
                 // each time canvas need to rotate 90 degree
-                canvas.drawPath(path, compassFramePaint);
+                canvas.drawPath(path, framePaint);
                 canvas.rotate(90);
             }
         }
@@ -400,39 +417,38 @@ public class MainActivity extends AppCompatActivity {
         private void drawDynamicFrame(Canvas canvas) {
             canvas.rotate(reverseFloatValue[0]);
 
-            compassFramePaint.setTextSize(70);
-            compassFramePaint.setColor(Color.parseColor("#616161"));
-            compassFramePaint.getTextBounds(COMPASS_TEXT[0], 0, 1, textRect);
+            framePaint.setTextSize(70);
+            framePaint.setColor(Color.parseColor("#616161"));
+            framePaint.getTextBounds(COMPASS_TEXT[0], 0, 1, textRect);
 
-            canvas.drawCircle(0, 0, DYNAMIC_FRAME_RADIUS, compassFramePaint);
+            canvas.drawCircle(0, 0, DYNAMIC_FRAME_RADIUS, framePaint);
 
             for (float f = 0; f < 360f; f += DYNAMIC_FRAME_GAP) {
                 if (Math.abs(floatsValues[0] - f) <= DYNAMIC_FRAME_GAP / 2
                         || (Math.abs(floatsValues[0] - f) < 360 && (Math.abs(floatsValues[0] -f) > 355.5f))) {
-                    Log.d(TAG, "floatsValues[0] : " + floatsValues[0] + ", f : " + f);
-                    compassFramePaint.setColor(Color.parseColor("#d32f2f"));
+                    framePaint.setColor(Color.parseColor("#d32f2f"));
                 } else {
-                    compassFramePaint.setColor(Color.parseColor("#616161"));
+                    framePaint.setColor(Color.parseColor("#616161"));
                 }
 
-                compassFramePaint.setStrokeWidth(6);
-                compassFramePaint.setStyle(Paint.Style.FILL);
+                framePaint.setStrokeWidth(6);
+                framePaint.setStyle(Paint.Style.FILL);
 
                 if (f % 90 == 0) {
-                    canvas.drawText(COMPASS_TEXT[(int) f / 90], -textRect.width() / 2, -(textRect.height() / 2 + DYNAMIC_FRAME_RADIUS * 1.1f), compassFramePaint);
+                    canvas.drawText(COMPASS_TEXT[(int) f / 90], -textRect.width() / 2, -(textRect.height() / 2 + DYNAMIC_FRAME_RADIUS * 1.1f), framePaint);
                 } else {
                     if (f % 45 == 0) {
-                        canvas.drawCircle(0, -(textRect.height() / 2 + DYNAMIC_FRAME_RADIUS * 1.15f), DYNAMIC_FRAME_SMALL_CIRCLE_RADIUS * 2f, compassFramePaint);
+                        canvas.drawCircle(0, -(textRect.height() / 2 + DYNAMIC_FRAME_RADIUS * 1.15f), DYNAMIC_FRAME_SMALL_CIRCLE_RADIUS * 2f, framePaint);
                     } else {
-                        canvas.drawCircle(0, -(textRect.height() / 2 + DYNAMIC_FRAME_RADIUS * 1.15f), DYNAMIC_FRAME_SMALL_CIRCLE_RADIUS, compassFramePaint);
+                        canvas.drawCircle(0, -(textRect.height() / 2 + DYNAMIC_FRAME_RADIUS * 1.15f), DYNAMIC_FRAME_SMALL_CIRCLE_RADIUS, framePaint);
                     }
                 }
 
                 canvas.rotate(DYNAMIC_FRAME_GAP);
             }
 
-            compassFramePaint.setStyle(Paint.Style.STROKE);
-            compassFramePaint.setStrokeWidth(12);
+            framePaint.setStyle(Paint.Style.STROKE);
+            framePaint.setStrokeWidth(12);
 
             textRect.setEmpty();
             canvas.rotate(-reverseFloatValue[0]);
@@ -440,31 +456,50 @@ public class MainActivity extends AppCompatActivity {
 
         private void drawDegree(Canvas canvas) {
             degree = String.valueOf((int) Math.abs(reverseFloatValue[0]));
-            compassTextPaint.setColor(Color.parseColor("#757575"));
-            compassTextPaint.getTextBounds(degree, 0, degree.length(), textRect);
 
-            canvas.drawText(degree, -textRect.width() / 2, textRect.height() / 2, compassTextPaint);
+            textPaint.setColor(Color.parseColor("#757575"));
+            textPaint.getTextBounds(degree, 0, degree.length(), textRect);
+
+            canvas.drawText(degree, -textRect.width() / 2, textRect.height() / 2, textPaint);
             textRect.setEmpty();
+        }
+
+        private void drawXYChart(Canvas canvas) {
+            if (compassPoint.size() == 0) {
+                initPoints();
+            }
+            compassPoint.remove(0);
+            compassPoint.add(-hSize * 0.26f + reverseFloatValue[0]);
+
+            for (int i = 1; i < compassPoint.size(); i++) {
+                canvas.drawLine((i - 1) - wSize * 0.25f, compassPoint.get(i - 1), i - wSize * 0.25f, compassPoint.get(i), xyPaint);
+            }
+        }
+
+        private void initPoints() {
+            for (int i = 0; i < wSize / 2; i ++) {
+                compassPoint.add(-hSize * 0.26f);
+            }
         }
 
         private void drawLatitudeLongitude(Canvas canvas) {
 
             if (hasPermission) {
-                compassTextPaint.setTextSize(50);
+                textPaint.setTextSize(50);
 
                 // latitude
                 String coordinate = String.valueOf(gpsCoordinates[0]);
                 coordinate =  addNESWBaseOnCoordinate(0, coordinate);
-                compassTextPaint.getTextBounds(coordinate, 0, coordinate.length(), textRect);
-                canvas.drawText(coordinate, -textRect.width() / 2, hSize / 2.01f, compassTextPaint);
+                textPaint.getTextBounds(coordinate, 0, coordinate.length(), textRect);
+                canvas.drawText(coordinate, -textRect.width() / 2, hSize / 2.01f, textPaint);
 
                 // longitude
                 coordinate = String.valueOf(gpsCoordinates[1]);
                 coordinate =  addNESWBaseOnCoordinate(1, coordinate);
-                compassTextPaint.getTextBounds(coordinate, 0, coordinate.length(), textRect);
-                canvas.drawText(coordinate, -textRect.width() / 2, hSize / 2 - textRect.height() * 1.4f, compassTextPaint);
+                textPaint.getTextBounds(coordinate, 0, coordinate.length(), textRect);
+                canvas.drawText(coordinate, -textRect.width() / 2, hSize / 2 - textRect.height() * 1.4f, textPaint);
 
-                compassTextPaint.setTextSize(200);
+                textPaint.setTextSize(200);
                 textRect.setEmpty();
             }
         }
@@ -491,12 +526,12 @@ public class MainActivity extends AppCompatActivity {
 
         private void drawAddress(Canvas canvas) {
             if (hasPermission && isGetAddressSuccess) {
-                compassTextPaint.setTextSize(50);
+                textPaint.setTextSize(50);
 
-                compassTextPaint.getTextBounds(addressOutput, 0, addressOutput.length(), textRect);
-                canvas.drawText(addressOutput, -textRect.width() / 2, hSize / 2 - textRect.height() * 6, compassTextPaint);
+                textPaint.getTextBounds(addressOutput, 0, addressOutput.length(), textRect);
+                canvas.drawText(addressOutput, -textRect.width() / 2, hSize / 2 - textRect.height() * 6, textPaint);
 
-                compassTextPaint.setTextSize(200);
+                textPaint.setTextSize(200);
                 textRect.setEmpty();
             }
         }
