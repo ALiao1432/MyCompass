@@ -43,11 +43,9 @@ import static com.google.android.gms.location.LocationServices.getFusedLocationP
 public class MainActivity extends AppCompatActivity {
 
     /*  TO DO
-    *   draw x-y graph
     *   add degree number transform animation
     *   add find other people's direction
     *   study wifi indoor
-    *   add sensor calibration function
     * */
 
     private static final String TAG = MainActivity.class.getSimpleName();
@@ -327,7 +325,8 @@ public class MainActivity extends AppCompatActivity {
         private Paint framePaint = new Paint();
         private Paint textPaint = new Paint();
         private Paint xyPaint = new Paint();
-        private Path path = new Path();
+        private Path scalePath = new Path();
+        private Path xyPath = new Path();
         private List<Float> compassPoint = new ArrayList<>();
         private String degree;
         private Rect textRect = new Rect();
@@ -373,6 +372,7 @@ public class MainActivity extends AppCompatActivity {
 
             xyPaint.setAntiAlias(true);
             xyPaint.setStrokeCap(Paint.Cap.ROUND);
+            xyPaint.setStyle(Paint.Style.STROKE);
             xyPaint.setStrokeWidth(2);
             xyPaint.setColor(Color.parseColor("#bdbdbd"));
         }
@@ -402,17 +402,17 @@ public class MainActivity extends AppCompatActivity {
             for (int i = 0; i < 4; i++) {
                 // draw N, E, S, W scale
                 // each time canvas need to rotate 90 degree
-                canvas.drawPath(path, framePaint);
+                canvas.drawPath(scalePath, framePaint);
                 canvas.rotate(90);
             }
         }
 
         private void setFixFrameScalePath() {
-            path.reset();
-            path.moveTo(-wSize / 100, -FIX_FRAME_RADIUS);
-            path.lineTo(0, -(FIX_FRAME_RADIUS + hSize / 100));
-            path.lineTo(wSize / 100, -FIX_FRAME_RADIUS);
-            path.close();
+            scalePath.reset();
+            scalePath.moveTo(-wSize / 100, -FIX_FRAME_RADIUS);
+            scalePath.lineTo(0, -(FIX_FRAME_RADIUS + hSize / 100));
+            scalePath.lineTo(wSize / 100, -FIX_FRAME_RADIUS);
+            scalePath.close();
         }
 
         private void drawDynamicFrame(Canvas canvas) {
@@ -486,9 +486,12 @@ public class MainActivity extends AppCompatActivity {
             compassPoint.remove(0);
             compassPoint.add(-hSize * .26f + reverseFloatValue[0]);
 
+            xyPath.moveTo(-wSize * .25f, compassPoint.get(0));
             for (int i = 1; i < compassPoint.size(); i++) {
-                canvas.drawLine((i - 1) - wSize * .25f, compassPoint.get(i - 1), i - wSize * .25f, compassPoint.get(i), xyPaint);
+                xyPath.lineTo(i - wSize * .25f, compassPoint.get(i));
             }
+            canvas.drawPath(xyPath, xyPaint);
+            xyPath.reset();
         }
 
         private void initPoints() {
