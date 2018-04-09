@@ -25,6 +25,7 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -110,6 +111,7 @@ public class MainActivity extends AppCompatActivity {
 
         final int MY_COARSE_LOCATION_REQUEST_CODE = 999;
         final int MY_FINE_LOCATION_REQUEST_CODE = 998;
+
 
         ConstraintLayout layout = findViewById(R.id.mainLayout);
         fusedLocationProviderClient = getFusedLocationProviderClient(MainActivity.this);
@@ -332,6 +334,9 @@ public class MainActivity extends AppCompatActivity {
         private Rect textRect = new Rect();
         private int wSize;
         private int hSize;
+        private int textWidth;
+        private int textHeight;
+        private boolean isTouchAddress = false;
 
         private final float FIX_FRAME_RADIUS = 250;
         private final float DYNAMIC_FRAME_RADIUS = 300;
@@ -348,6 +353,29 @@ public class MainActivity extends AppCompatActivity {
             super(context);
 
             initPaints();
+
+            this.setOnTouchListener((view, motionEvent) -> {
+                switch (motionEvent.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        if (motionEvent.getX() > wSize / 2 - textWidth / 2
+                                && motionEvent.getX() < wSize / 2 + textWidth / 2
+                                && motionEvent.getY() > hSize - textHeight * 8
+                                && motionEvent.getY() < hSize - textHeight * 5) {
+                            isTouchAddress = true;
+                        }
+                        break;
+                    case MotionEvent.ACTION_UP:
+                        isTouchAddress = false;
+                        break;
+                }
+                view.performClick();
+                return true;
+            });
+        }
+
+        @Override
+        public boolean performClick() {
+            return super.performClick();
         }
 
         @Override
@@ -547,8 +575,16 @@ public class MainActivity extends AppCompatActivity {
                 textPaint.setTextSize(50);
 
                 textPaint.getTextBounds(addressOutput, 0, addressOutput.length(), textRect);
+                if (isTouchAddress) {
+                    textPaint.setColor(Color.parseColor("#e53935"));
+                } else {
+                    textPaint.setColor(Color.parseColor("#757575"));
+                }
+
                 canvas.drawText(addressOutput, -textRect.width() / 2, hSize / 2 - textRect.height() * 6, textPaint);
 
+                textWidth = textRect.width();
+                textHeight = textRect.height();
                 textPaint.setTextSize(200);
                 textRect.setEmpty();
             }
