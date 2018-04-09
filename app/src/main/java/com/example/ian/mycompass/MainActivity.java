@@ -43,9 +43,9 @@ import static com.google.android.gms.location.LocationServices.getFusedLocationP
 public class MainActivity extends AppCompatActivity {
 
     /*  TO DO
+    *   weather info
     *   add degree number transform animation
     *   add find other people's direction
-    *   study wifi indoor
     * */
 
     private static final String TAG = MainActivity.class.getSimpleName();
