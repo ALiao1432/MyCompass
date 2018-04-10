@@ -9,6 +9,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Rect;
+import android.graphics.drawable.ColorDrawable;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -25,8 +26,12 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.PopupWindow;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
@@ -329,6 +334,8 @@ public class MainActivity extends AppCompatActivity {
         private Paint xyPaint = new Paint();
         private Path scalePath = new Path();
         private Path xyPath = new Path();
+        private PopupWindow popupWindow;
+        private View weatherView;
         private List<Float> compassPoint = new ArrayList<>();
         private String degree;
         private Rect textRect = new Rect();
@@ -362,10 +369,12 @@ public class MainActivity extends AppCompatActivity {
                                 && motionEvent.getY() > hSize - textHeight * 8
                                 && motionEvent.getY() < hSize - textHeight * 5) {
                             isTouchAddress = true;
+                            initPopupWindow();
                         }
                         break;
                     case MotionEvent.ACTION_UP:
                         isTouchAddress = false;
+                        dismissPopupWindow();
                         break;
                 }
                 view.performClick();
@@ -403,6 +412,24 @@ public class MainActivity extends AppCompatActivity {
             xyPaint.setStyle(Paint.Style.STROKE);
             xyPaint.setStrokeWidth(2);
             xyPaint.setColor(Color.parseColor("#bdbdbd"));
+        }
+
+        private void initPopupWindow() {
+            weatherView = LayoutInflater.from(this.getContext()).inflate(R.layout.popup_weather, null, false);
+
+            popupWindow = new PopupWindow(weatherView, wSize * 3 / 4, ViewGroup.LayoutParams.WRAP_CONTENT, true);
+            popupWindow.setFocusable(false);
+            popupWindow.setBackgroundDrawable(new ColorDrawable(0x00000000));
+            popupWindow.setTouchable(true);
+            popupWindow.setTouchInterceptor((v, motionEvent) -> {
+                v.performClick();
+                return false;
+            });
+            popupWindow.showAtLocation(this, Gravity.CENTER, 0, 0);
+        }
+
+        private void dismissPopupWindow() {
+            popupWindow.dismiss();
         }
 
         @Override
