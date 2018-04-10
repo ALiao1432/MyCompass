@@ -1,6 +1,8 @@
 package com.example.ian.mycompass;
 
 import android.Manifest;
+import android.animation.ValueAnimator;
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -31,6 +33,8 @@ import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.PopupWindow;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -56,6 +60,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = MainActivity.class.getSimpleName();
 
+    private Context context;
     private FusedLocationProviderClient fusedLocationProviderClient;
     private Location lastLocation;
     private ResultReceiver resultReceiver;
@@ -117,6 +122,7 @@ public class MainActivity extends AppCompatActivity {
         final int MY_COARSE_LOCATION_REQUEST_CODE = 999;
         final int MY_FINE_LOCATION_REQUEST_CODE = 998;
 
+        context = this;
 
         ConstraintLayout layout = findViewById(R.id.mainLayout);
         fusedLocationProviderClient = getFusedLocationProviderClient(MainActivity.this);
@@ -349,6 +355,7 @@ public class MainActivity extends AppCompatActivity {
         private final float DYNAMIC_FRAME_RADIUS = 300;
         private final float DYNAMIC_FRAME_SMALL_CIRCLE_RADIUS = 6;
         private final float DYNAMIC_FRAME_GAP = (float) 360 / 40;
+        private final float BACKGROUND_ALPHA = .25f;
         private final String[] COMPASS_TEXT = {
                 "N",
                 "E",
@@ -369,11 +376,13 @@ public class MainActivity extends AppCompatActivity {
                                 && motionEvent.getY() > hSize - textHeight * 8
                                 && motionEvent.getY() < hSize - textHeight * 5) {
                             isTouchAddress = true;
+                            showBackgroundAnimator(1f, BACKGROUND_ALPHA);
                             initPopupWindow();
                         }
                         break;
                     case MotionEvent.ACTION_UP:
                         isTouchAddress = false;
+                        showBackgroundAnimator(BACKGROUND_ALPHA, 1f);
                         dismissPopupWindow();
                         break;
                 }
@@ -430,6 +439,28 @@ public class MainActivity extends AppCompatActivity {
 
         private void dismissPopupWindow() {
             popupWindow.dismiss();
+        }
+
+        private void showBackgroundAnimator(float from, float to) {
+            ValueAnimator animator = ValueAnimator.ofFloat(from, to);
+            animator.addUpdateListener(valueAnimator -> {
+                float alpah = (float) animator.getAnimatedValue();
+                setWindowBackgroundAlpha(alpah);
+            });
+            animator.setDuration(100);
+            animator.start();
+        }
+
+        private void setWindowBackgroundAlpha(float alpha) {
+            if (context == null) {
+                return;
+            }
+            if (context instanceof Activity) {
+                Window window = ((Activity) context).getWindow();
+                WindowManager.LayoutParams layoutParams = window.getAttributes();
+                layoutParams.alpha = alpha;
+                window.setAttributes(layoutParams);
+            }
         }
 
         @Override
