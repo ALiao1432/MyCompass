@@ -45,8 +45,14 @@ import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.SettingsClient;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import okhttp3.HttpUrl;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 import static com.google.android.gms.location.LocationServices.getFusedLocationProviderClient;
 
@@ -78,6 +84,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean hasPermission = false;
     private boolean isGetAddressSuccess = false;
     private String addressOutput = "";
+    private final String WEATHER_APPID = "1ebecdd87b08f61cb1e122431eceb822";
 
     private SensorEventListener listener = new SensorEventListener() {
         @Override
@@ -214,10 +221,28 @@ public class MainActivity extends AppCompatActivity {
             Log.d(TAG, "update location : " + l.getLongitude() + ", " + l.getLatitude());
             gpsCoordinates[0] = l.getLatitude();
             gpsCoordinates[1] = l.getLongitude();
+            findWeather(gpsCoordinates[0], gpsCoordinates[1]);
 
             lastLocation = l;
             startLatLongToAddressService();
         }
+    }
+
+    private void findWeather(double lat, double lon) {
+        new Thread(() -> {
+            OkHttpClient client = new OkHttpClient();
+            HttpUrl.Builder builder = HttpUrl.parse("http://api.openweathermap.org/data/2.5/weather?lat=" + lat + "&lon=" + lon + "&APPID=" + WEATHER_APPID).newBuilder();
+            Request request = new Request.Builder()
+                    .url(builder.toString())
+                    .build();
+
+            try {
+                Response response = client.newCall(request).execute();
+                Log.d(TAG, "weather : " + response.body().string());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }).start();
     }
 
     @Override
@@ -381,9 +406,14 @@ public class MainActivity extends AppCompatActivity {
                         }
                         break;
                     case MotionEvent.ACTION_UP:
-                        isTouchAddress = false;
-                        showBackgroundAnimator(BACKGROUND_ALPHA, 1f);
-                        dismissPopupWindow();
+                        if (motionEvent.getX() > wSize / 2 - textWidth / 2
+                                && motionEvent.getX() < wSize / 2 + textWidth / 2
+                                && motionEvent.getY() > hSize - textHeight * 8
+                                && motionEvent.getY() < hSize - textHeight * 5) {
+                            isTouchAddress = false;
+                            showBackgroundAnimator(BACKGROUND_ALPHA, 1f);
+                            dismissPopupWindow();
+                        }
                         break;
                 }
                 view.performClick();
@@ -438,14 +468,16 @@ public class MainActivity extends AppCompatActivity {
         }
 
         private void dismissPopupWindow() {
-            popupWindow.dismiss();
+            if (popupWindow != null) {
+                popupWindow.dismiss();
+            }
         }
 
         private void showBackgroundAnimator(float from, float to) {
             ValueAnimator animator = ValueAnimator.ofFloat(from, to);
             animator.addUpdateListener(valueAnimator -> {
-                float alpah = (float) animator.getAnimatedValue();
-                setWindowBackgroundAlpha(alpah);
+                float alpha = (float) animator.getAnimatedValue();
+                setWindowBackgroundAlpha(alpha);
             });
             animator.setDuration(100);
             animator.start();
