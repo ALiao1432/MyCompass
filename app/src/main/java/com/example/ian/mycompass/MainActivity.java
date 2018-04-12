@@ -77,16 +77,16 @@ public class MainActivity extends AppCompatActivity {
 
     private float[] mSensorValue;
     private float[] aSensorValue;
-    private float[] floatsValues = new float[3];
-    private float[] reverseFloatValue = new float[3];
-    private double[] gpsCoordinates = new double[2]; // 0 : latitude, 1 : longitude
-    private int[] intValues = new int[3];
+    private final float[] reverseFloatValue = new float[3];
+    private final float[] floatsValues = new float[3];
+    private final double[] gpsCoordinates = new double[2]; // 0 : latitude, 1 : longitude
+    private final int[] intValues = new int[3];
     private boolean hasPermission = false;
     private boolean isGetAddressSuccess = false;
     private String addressOutput = "";
     private final String WEATHER_APPID = "1ebecdd87b08f61cb1e122431eceb822";
 
-    private SensorEventListener listener = new SensorEventListener() {
+    private final SensorEventListener listener = new SensorEventListener() {
         @Override
         public void onSensorChanged(SensorEvent sensorEvent) {
 
@@ -360,16 +360,16 @@ public class MainActivity extends AppCompatActivity {
 
     private class CompassView extends View {
 
-        private Paint framePaint = new Paint();
-        private Paint textPaint = new Paint();
-        private Paint xyPaint = new Paint();
-        private Path scalePath = new Path();
-        private Path xyPath = new Path();
+        private final Paint framePaint = new Paint();
+        private final Paint textPaint = new Paint();
+        private final Paint xyPaint = new Paint();
+        private final Path scalePath = new Path();
+        private final Path xyPath = new Path();
         private PopupWindow popupWindow;
         private View weatherView;
-        private List<Float> compassPoint = new ArrayList<>();
+        private final List<Float> compassPoint = new ArrayList<>();
         private String degree;
-        private Rect textRect = new Rect();
+        private final Rect textRect = new Rect();
         private int wSize;
         private int hSize;
         private int textWidth;
