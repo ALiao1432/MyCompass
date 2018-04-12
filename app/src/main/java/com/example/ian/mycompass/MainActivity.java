@@ -414,14 +414,11 @@ public class MainActivity extends AppCompatActivity {
                         }
                         break;
                     case MotionEvent.ACTION_UP:
-                        if (motionEvent.getX() > wSize / 2 - textWidth / 2
-                                && motionEvent.getX() < wSize / 2 + textWidth / 2
-                                && motionEvent.getY() > hSize - textHeight * 8
-                                && motionEvent.getY() < hSize - textHeight * 5) {
-                            isTouchAddress = false;
+                        if (isTouchAddress) {
                             showBackgroundAnimator(BACKGROUND_ALPHA, 1f);
-                            dismissPopupWindow();
                         }
+                        isTouchAddress = false;
+                        dismissPopupWindow();
                         break;
                 }
                 view.performClick();
