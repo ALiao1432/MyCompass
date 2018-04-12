@@ -36,6 +36,7 @@ import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.PopupWindow;
+import android.widget.TextView;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
@@ -44,6 +45,8 @@ import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.SettingsClient;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -74,6 +77,7 @@ public class MainActivity extends AppCompatActivity {
     private Sensor mSensor;
     private Sensor aSensor;
     private CompassView compassView;
+    private WeatherData weatherData;
 
     private float[] mSensorValue;
     private float[] aSensorValue;
@@ -229,6 +233,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void findWeather(double lat, double lon) {
+
         new Thread(() -> {
             OkHttpClient client = new OkHttpClient();
             HttpUrl.Builder builder = HttpUrl.parse("http://api.openweathermap.org/data/2.5/weather?lat=" + lat + "&lon=" + lon + "&APPID=" + WEATHER_APPID).newBuilder();
@@ -238,7 +243,10 @@ public class MainActivity extends AppCompatActivity {
 
             try {
                 Response response = client.newCall(request).execute();
-                Log.d(TAG, "weather : " + response.body().string());
+
+                Gson gson = new GsonBuilder().setPrettyPrinting().create();
+                weatherData = gson.fromJson(response.body().string(), WeatherData.class);
+//                Log.d(TAG, "weather : " + response.body().string());
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -455,6 +463,8 @@ public class MainActivity extends AppCompatActivity {
 
         private void initPopupWindow() {
             weatherView = LayoutInflater.from(this.getContext()).inflate(R.layout.popup_weather, null, false);
+            TextView weatherText = weatherView.findViewById(R.id.weatherText);
+            weatherText.setText(weatherData.toString());
 
             popupWindow = new PopupWindow(weatherView, wSize * 3 / 4, ViewGroup.LayoutParams.WRAP_CONTENT, true);
             popupWindow.setFocusable(false);
