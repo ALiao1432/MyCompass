@@ -266,7 +266,7 @@ public class MainActivity extends AppCompatActivity {
 
     // sensor is too sensitive, need a filter to get smooth data
     private float[] lowPassFilter(float[] input, float[] output) {
-        final float LOW_PASS_FILTER_COEFFICIENT = 0.15f;
+        final float LOW_PASS_FILTER_COEFFICIENT = 0.1f;
 
         if (output == null) {
             return input;
