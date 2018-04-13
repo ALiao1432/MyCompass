@@ -49,8 +49,11 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
@@ -461,7 +464,7 @@ public class MainActivity extends AppCompatActivity {
         private void initPopupWindow() {
             weatherView = LayoutInflater.from(this.getContext()).inflate(R.layout.popup_weather, null, false);
             TextView weatherText = weatherView.findViewById(R.id.weatherText);
-            weatherText.setText(weatherData.toString());
+            weatherText.setText(getWeatherString());
 
             popupWindow = new PopupWindow(weatherView, wSize * 3 / 4, ViewGroup.LayoutParams.WRAP_CONTENT, true);
             popupWindow.setFocusable(false);
@@ -477,6 +480,23 @@ public class MainActivity extends AppCompatActivity {
         private void dismissPopupWindow() {
             if (popupWindow != null) {
                 popupWindow.dismiss();
+            }
+        }
+
+        private String getWeatherString() {
+            if (weatherData != null) {
+                Main main = weatherData.getMain();
+                Wind wind = weatherData.getWind();
+
+                return  "-------------- Weather Details --------------"
+                        + "\nTemperature : " + (int)(main.getTemp() - 273.15)
+                        + "\nPressure : " + main.getPressure()
+                        + "\nHumidity : " + main.getHumidity()
+                        + "\nWind speed : " + wind.getSpeed()
+                        + "\nWind direction : " + wind.getDegString() + "(" + wind.getDeg() + ")"
+                        + "\n-------------------------------------------------------";
+            } else {
+                return "WeatherData is not ready!";
             }
         }
 

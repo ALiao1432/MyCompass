@@ -17,7 +17,7 @@ public class WeatherData {
 
     @Override
     public String toString() {
-        return "************ Weather Details ************"
+        return "-------------- Weather Details --------------"
                 + "\n" + getCoord()
                 + "\n" + getWeather()
                 + "\n" + getBase()
@@ -30,7 +30,7 @@ public class WeatherData {
                 + "\n" + getId()
                 + "\n" + getName()
                 + "\n" + getCod()
-                + "\n" + "*****************************************";
+                + "\n" + "-------------------------------------------------------";
     }
 
     public Coord getCoord() {
@@ -282,6 +282,41 @@ class Wind {
     public void setDeg(int deg) {
         this.deg = deg;
     }
+
+    public String getDegString() {
+        if (deg >= 348 || deg <= 11)
+            return "N";
+        else if (deg <= 33)
+            return "NNE";
+        else if (deg <= 56)
+            return "NE";
+        else if (deg <= 78)
+            return "ENE";
+        else if (deg <= 101)
+            return "E";
+        else if (deg <= 123)
+            return "ESE";
+        else if (deg <= 146)
+            return "SE";
+        else if (deg <= 168)
+            return "SSE";
+        else if (deg <= 191)
+            return "S";
+        else if (deg <= 213)
+            return "SSW";
+        else if (deg <= 236)
+            return "SW";
+        else if (deg <= 258)
+            return "WSW";
+        else if (deg <= 281)
+            return "W";
+        else if (deg <= 303)
+            return "WNW";
+        else if (deg <= 326)
+            return "NW";
+        else
+            return "NNW";
+        }
 }
 
 class Clouds {
