@@ -7,15 +7,14 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:layout_margin="5dp"
-    card_view:cardCornerRadius="12dp">
-
-    <RelativeLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#fafafa">
+    card_view:cardCornerRadius="15dp"
+    card_view:cardBackgroundColor="#dffafafa"
+    card_view:cardElevation="100dp"
+    card_view:cardMaxElevation="100dp">
 
         <TextView
             android:id="@+id/weatherText"
+            android:textSize="15sp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textAlignment="center"
@@ -23,6 +22,5 @@
             android:layout_marginEnd="8dp"
             android:layout_marginStart="8dp"
             android:layout_marginTop="8dp" />
-    </RelativeLayout>
 
 </android.support.v7.widget.CardView>

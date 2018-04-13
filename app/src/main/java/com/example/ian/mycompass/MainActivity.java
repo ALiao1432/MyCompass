@@ -49,11 +49,8 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.Locale;
 
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
@@ -65,7 +62,7 @@ import static com.google.android.gms.location.LocationServices.getFusedLocationP
 public class MainActivity extends AppCompatActivity {
 
     /*  TO DO
-    *   weather info
+    *   color preference
     *   add degree number transform animation
     *   add find other people's direction
     * */
@@ -466,7 +463,7 @@ public class MainActivity extends AppCompatActivity {
             TextView weatherText = weatherView.findViewById(R.id.weatherText);
             weatherText.setText(getWeatherString());
 
-            popupWindow = new PopupWindow(weatherView, wSize * 3 / 4, ViewGroup.LayoutParams.WRAP_CONTENT, true);
+            popupWindow = new PopupWindow(weatherView, wSize * 4 / 5, ViewGroup.LayoutParams.WRAP_CONTENT, true);
             popupWindow.setFocusable(false);
             popupWindow.setBackgroundDrawable(new ColorDrawable(0x00000000));
             popupWindow.setTouchable(true);
@@ -528,6 +525,7 @@ public class MainActivity extends AppCompatActivity {
 
             // set background color
             canvas.drawColor(Color.parseColor("#111111"));
+//            canvas.drawColor(Color.parseColor("#ffffff"));
 
             drawFixFrame(canvas);
             drawDynamicFrame(canvas);
