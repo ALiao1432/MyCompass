@@ -79,8 +79,8 @@ public class MainActivity extends AppCompatActivity {
     private CompassView compassView;
     private WeatherData weatherData;
 
-    private float[] mSensorValue;
-    private float[] aSensorValue;
+    private float[] mSensorValue = new float[3];
+    private float[] aSensorValue = new float[3];
     private final float[] reverseFloatValue = new float[3];
     private final float[] floatsValues = new float[3];
     private final double[] gpsCoordinates = new double[2]; // 0 : latitude, 1 : longitude
@@ -102,14 +102,7 @@ public class MainActivity extends AppCompatActivity {
             if (sensorEvent.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
                 aSensorValue = lowPassFilter(sensorEvent.values, aSensorValue);
             }
-
-            // prevent mSensorValue or aSensorValue is null
-            if (mSensorValue == null) {
-                mSensorValue = new float[3];
-            }
-            if (aSensorValue == null) {
-                aSensorValue = new float[3];
-            }
+            
 //            Log.d(TAG, "mSensorValue : " + mSensorValue[0] + ", " + mSensorValue[1] + ", " + mSensorValue[2]);
 //            Log.d(TAG, "aSensorValue : " + aSensorValue[0] + ", " + aSensorValue[1] + ", " + aSensorValue[2]);
             calculateOrientation();
