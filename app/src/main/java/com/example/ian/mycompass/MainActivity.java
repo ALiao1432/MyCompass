@@ -87,6 +87,7 @@ public class MainActivity extends AppCompatActivity {
     private final int[] intValues = new int[3];
     private boolean hasPermission = false;
     private boolean isGetAddressSuccess = false;
+    private boolean isBackground = false;
     private String addressOutput = "";
     private final String WEATHER_APPID = "1ebecdd87b08f61cb1e122431eceb822";
 
@@ -102,7 +103,7 @@ public class MainActivity extends AppCompatActivity {
             if (sensorEvent.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
                 aSensorValue = lowPassFilter(sensorEvent.values, aSensorValue);
             }
-            
+
 //            Log.d(TAG, "mSensorValue : " + mSensorValue[0] + ", " + mSensorValue[1] + ", " + mSensorValue[2]);
 //            Log.d(TAG, "aSensorValue : " + aSensorValue[0] + ", " + aSensorValue[1] + ", " + aSensorValue[2]);
             calculateOrientation();
@@ -144,7 +145,7 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 if (resultCode == GeoConstants.SUCCESS_RESULT) {
-                    Log.d(TAG, "found address successful : " + addressOutput);
+//                    Log.d(TAG, "found address successful : " + addressOutput);
                     isGetAddressSuccess = true;
                 } else  if (resultCode == GeoConstants.FAILURE_RESULT) {
                     addressOutput = "...";
@@ -175,7 +176,7 @@ public class MainActivity extends AppCompatActivity {
     private void startLocationUpdates() {
 
         LocationCallback locationCallback;
-        final long LOCATION_REQUEST_INTERVAL = 1000 * 60; // 60 sec
+        final long LOCATION_REQUEST_INTERVAL = 1000 * 60; // (1000 million * 60) sec
         final long LOCATION_REQUEST_FASTEST_INTERVAL = LOCATION_REQUEST_INTERVAL / 2;
 
         // create the location request to start receiving updates
@@ -206,10 +207,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startLatLongToAddressService() {
-        Intent intent = new Intent(this, FetchAddressIntentService.class);
-        intent.putExtra(GeoConstants.RECEIVER, resultReceiver);
-        intent.putExtra(GeoConstants.LOCATION_DATA_EXTRA, lastLocation);
-        startService(intent);
+        Log.d(TAG, "isBackground : " + isBackground);
+        if (!isBackground) {
+            Intent intent = new Intent(this, FetchAddressIntentService.class);
+            intent.putExtra(GeoConstants.RECEIVER, resultReceiver);
+            intent.putExtra(GeoConstants.LOCATION_DATA_EXTRA, lastLocation);
+            startService(intent);
+        }
     }
 
     private void onLocationChanged(List<Location> locationList) {
@@ -315,6 +319,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
 
+        isBackground = false;
+
         if (mSensor != null || aSensor != null) {
 //            Log.d(TAG, "register sensor listener");
             sensorManager.registerListener(listener, mSensor, SensorManager.SENSOR_DELAY_UI);
@@ -342,7 +348,7 @@ public class MainActivity extends AppCompatActivity {
                                 if (location != null) {
                                     gpsCoordinates[0] = location.getLatitude();
                                     gpsCoordinates[1] = location.getLongitude();
-                                    Log.d(TAG, "gpsCoordinates : " + gpsCoordinates[0] + ", " + gpsCoordinates[1]);
+//                                    Log.d(TAG, "gpsCoordinates : " + gpsCoordinates[0] + ", " + gpsCoordinates[1]);
                                 }
                             });
                     break;
@@ -355,6 +361,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
+
+        isBackground = true;
+
 //        Log.d(TAG, "unregister sensor listener");
         sensorManager.unregisterListener(listener);
     }
