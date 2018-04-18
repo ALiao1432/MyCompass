@@ -206,7 +206,7 @@ class Weather {
 class Main {
 
     private float temp;
-    private int pressure;
+    private float pressure;
     private int humidity;
     private float temp_min;
     private float temp_max;
@@ -224,11 +224,11 @@ class Main {
         this.temp = temp;
     }
 
-    public int getPressure() {
+    public float getPressure() {
         return pressure;
     }
 
-    public void setPressure(int pressure) {
+    public void setPressure(float pressure) {
         this.pressure = pressure;
     }
 
@@ -260,7 +260,7 @@ class Main {
 class Wind {
 
     private float speed;
-    private int deg;
+    private float deg;
 
     @Override
     public String toString() {
@@ -275,11 +275,11 @@ class Wind {
         this.speed = speed;
     }
 
-    public int getDeg() {
+    public float getDeg() {
         return deg;
     }
 
-    public void setDeg(int deg) {
+    public void setDeg(float deg) {
         this.deg = deg;
     }
 
