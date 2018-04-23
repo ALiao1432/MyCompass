@@ -123,6 +123,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
 
         final int MY_COARSE_LOCATION_REQUEST_CODE = 999;
         final int MY_FINE_LOCATION_REQUEST_CODE = 998;
@@ -130,8 +131,11 @@ public class MainActivity extends AppCompatActivity {
         context = this;
 
         ConstraintLayout layout = findViewById(R.id.mainLayout);
-        fusedLocationProviderClient = getFusedLocationProviderClient(MainActivity.this);
         compassView = new CompassView(this);
+
+        layout.addView(compassView);
+
+        fusedLocationProviderClient = getFusedLocationProviderClient(MainActivity.this);
         resultReceiver = new ResultReceiver(new Handler()) {
             @Override
             protected void onReceiveResult(int resultCode, Bundle resultData) {
@@ -153,7 +157,6 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
-        setContentView(compassView);
 
         // check if user grant the permission
         if (this.checkPermission(Manifest.permission.ACCESS_COARSE_LOCATION, Process.myPid(), Process.myUid()) == PackageManager.PERMISSION_DENIED) {
