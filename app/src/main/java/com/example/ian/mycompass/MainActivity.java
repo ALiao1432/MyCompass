@@ -3,8 +3,6 @@ package com.example.ian.mycompass;
 import android.Manifest;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
-import android.animation.ValueAnimator;
-import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -13,7 +11,6 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Rect;
-import android.graphics.drawable.ColorDrawable;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -31,16 +28,11 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.CardView;
 import android.util.Log;
-import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewAnimationUtils;
 import android.view.ViewGroup;
-import android.view.Window;
-import android.view.WindowManager;
 import android.view.animation.DecelerateInterpolator;
-import android.widget.PopupWindow;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
@@ -75,7 +67,7 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = MainActivity.class.getSimpleName();
 
-    private Context context;
+//    private Context context;
     private FusedLocationProviderClient fusedLocationProviderClient;
     private Location lastLocation;
     private ResultReceiver resultReceiver;
@@ -137,7 +129,7 @@ public class MainActivity extends AppCompatActivity {
         final int MY_COARSE_LOCATION_REQUEST_CODE = 999;
         final int MY_FINE_LOCATION_REQUEST_CODE = 998;
 
-        context = this;
+//        context = this;
 
         layout = findViewById(R.id.mainLayout);
         initComponentView();
@@ -189,7 +181,6 @@ public class MainActivity extends AppCompatActivity {
 
         // addressTextView
         addressTextView = new TextView(this);
-        addressTextView.setText("test");
         addressTextView.setTextSize(20);
         addressTextView.setVisibility(View.INVISIBLE);
         addressTextView.setTextColor(Color.parseColor("#757575"));
@@ -197,7 +188,6 @@ public class MainActivity extends AppCompatActivity {
         // weatherCardView
         weatherCardView = new CusWeatherCardView(this);
         weatherCardView.setRadius(16);
-        weatherCardView.setCardBackgroundColor(Color.parseColor("#f4511e"));
         weatherCardView.setLayoutParams(new RelativeLayout.LayoutParams(300, 50));
         weatherCardView.setVisibility(View.INVISIBLE);
     }
@@ -410,8 +400,6 @@ public class MainActivity extends AppCompatActivity {
         private final Paint xyPaint = new Paint();
         private final Path scalePath = new Path();
         private final Path xyPath = new Path();
-        private PopupWindow popupWindow;
-        private View weatherView;
         private final List<Float> compassPoint = new ArrayList<>();
         private String degree;
         private final Rect textRect = new Rect();
@@ -423,7 +411,7 @@ public class MainActivity extends AppCompatActivity {
         private final float DYNAMIC_FRAME_RADIUS = 300;
         private final float DYNAMIC_FRAME_SMALL_CIRCLE_RADIUS = 6;
         private final float DYNAMIC_FRAME_GAP = (float) 360 / 40;
-        private final float BACKGROUND_ALPHA = .25f;
+//        private final float BACKGROUND_ALPHA = .25f;
         private final int ANIMATOR_DURATION = 350;
         private final String[] COMPASS_TEXT = {
                 "N",
@@ -527,27 +515,27 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
-        private void showBackgroundAnimator(float from, float to) {
-            ValueAnimator animator = ValueAnimator.ofFloat(from, to);
-            animator.addUpdateListener(valueAnimator -> {
-                float alpha = (float) animator.getAnimatedValue();
-                setWindowBackgroundAlpha(alpha);
-            });
-            animator.setDuration(100);
-            animator.start();
-        }
+//        private void showBackgroundAnimator(float from, float to) {
+//            ValueAnimator animator = ValueAnimator.ofFloat(from, to);
+//            animator.addUpdateListener(valueAnimator -> {
+//                float alpha = (float) animator.getAnimatedValue();
+//                setWindowBackgroundAlpha(alpha);
+//            });
+//            animator.setDuration(100);
+//            animator.start();
+//        }
 
-        private void setWindowBackgroundAlpha(float alpha) {
-            if (context == null) {
-                return;
-            }
-            if (context instanceof Activity) {
-                Window window = ((Activity) context).getWindow();
-                WindowManager.LayoutParams layoutParams = window.getAttributes();
-                layoutParams.alpha = alpha;
-                window.setAttributes(layoutParams);
-            }
-        }
+//        private void setWindowBackgroundAlpha(float alpha) {
+//            if (context == null) {
+//                return;
+//            }
+//            if (context instanceof Activity) {
+//                Window window = ((Activity) context).getWindow();
+//                WindowManager.LayoutParams layoutParams = window.getAttributes();
+//                layoutParams.alpha = alpha;
+//                window.setAttributes(layoutParams);
+//            }
+//        }
 
         @Override
         protected void onDraw(Canvas canvas) {
