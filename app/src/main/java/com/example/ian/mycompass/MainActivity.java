@@ -183,12 +183,14 @@ public class MainActivity extends AppCompatActivity {
         addressTextView = new TextView(this);
         addressTextView.setTextSize(20);
         addressTextView.setVisibility(View.INVISIBLE);
+        addressTextView.setBackgroundColor(Color.parseColor("#090909"));
         addressTextView.setTextColor(Color.parseColor("#757575"));
 
         // weatherCardView
         weatherCardView = new CusWeatherCardView(this);
         weatherCardView.setRadius(16);
-        weatherCardView.setLayoutParams(new RelativeLayout.LayoutParams(300, 50));
+        weatherCardView.setBackgroundColor(Color.parseColor("#fafafa"));
+        weatherCardView.setAlpha(.95f);
         weatherCardView.setVisibility(View.INVISIBLE);
     }
 
@@ -401,8 +403,10 @@ public class MainActivity extends AppCompatActivity {
         private final Path scalePath = new Path();
         private final Path xyPath = new Path();
         private final List<Float> compassPoint = new ArrayList<>();
-        private String degree;
         private final Rect textRect = new Rect();
+        private Animator openAnimator;
+        private Animator closeAnimator;
+        private String degree;
         private int wSize;
         private int hSize;
         private boolean isTouchAddress = false;
@@ -412,7 +416,7 @@ public class MainActivity extends AppCompatActivity {
         private final float DYNAMIC_FRAME_SMALL_CIRCLE_RADIUS = 6;
         private final float DYNAMIC_FRAME_GAP = (float) 360 / 40;
 //        private final float BACKGROUND_ALPHA = .25f;
-        private final int ANIMATOR_DURATION = 350;
+        private final long ANIMATOR_DURATION = 200;
         private final String[] COMPASS_TEXT = {
                 "N",
                 "E",
@@ -458,44 +462,57 @@ public class MainActivity extends AppCompatActivity {
             xyPaint.setColor(Color.parseColor("#bdbdbd"));
         }
 
-        private void initWeatherCardView() {
-            weatherCardView.setBackgroundColor(Color.parseColor("#fafafa"));
-            weatherCardView.setAlpha(.95f);
+        private void openWeatherCardView() {
+            Log.d(TAG, "card width : " + (wSize - weatherCardView.getWidth()) / 2);
+            Log.d(TAG, "card height : " + (hSize - weatherCardView.getHeight()) / 2);
+
             weatherCardView.setCusCardViewText(getWeatherString());
-            weatherCardView.setRadius(16);
-            weatherCardView.setY(hSize * .5f);
+            weatherCardView.setX((wSize - weatherCardView.getWidth()) / 2);
+            weatherCardView.setY((hSize - weatherCardView.getHeight()) / 2);
             weatherCardView.setLayoutParams(new ConstraintLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
             openCardAnimation();
         }
 
         private void openCardAnimation() {
-            int cx = weatherCardView.getWidth();
-            int cy = weatherCardView.getHeight();
+            int cx = weatherCardView.getWidth() / 2;
+            int cy = weatherCardView.getHeight() / 2;
             float finalRadius = (float) Math.hypot(weatherCardView.getWidth(), weatherCardView.getHeight());
 
-            Animator animator = ViewAnimationUtils.createCircularReveal(weatherCardView, cx, cy, 0, finalRadius);
-            animator.setDuration(ANIMATOR_DURATION);
-            animator.setInterpolator(new DecelerateInterpolator());
+            openAnimator = ViewAnimationUtils.createCircularReveal(weatherCardView, cx, cy, 0, finalRadius);
+            openAnimator.setDuration(ANIMATOR_DURATION);
             weatherCardView.setVisibility(VISIBLE);
-            animator.start();
+            openAnimator.start();
         }
 
-        private void dismissWeatherCardView() {
-            int cx = weatherCardView.getWidth();
-            int cy = weatherCardView.getHeight();
+        private void closeWeatherCardView() {
+            if (openAnimator.isRunning()) {
+                openAnimator.addListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        super.onAnimationEnd(animation);
+                        closeCardAnimation();
+                    }
+                });
+            } else {
+                closeCardAnimation();
+            }
+        }
+
+        private void closeCardAnimation() {
+            int cx = weatherCardView.getWidth() / 2;
+            int cy = weatherCardView.getHeight() / 2;
             float finalRadius = (float) Math.hypot(weatherCardView.getWidth(), weatherCardView.getHeight());
 
-            Animator animator = ViewAnimationUtils.createCircularReveal(weatherCardView, cx, cy, finalRadius, 0);
-            animator.setDuration(ANIMATOR_DURATION);
-            animator.setInterpolator(new DecelerateInterpolator());
-            animator.addListener(new AnimatorListenerAdapter() {
+            closeAnimator = ViewAnimationUtils.createCircularReveal(weatherCardView, cx, cy, finalRadius, 0);
+            closeAnimator.setDuration(ANIMATOR_DURATION);
+            closeAnimator.addListener(new AnimatorListenerAdapter() {
                 @Override
                 public void onAnimationEnd(Animator animation) {
                     super.onAnimationEnd(animation);
                     weatherCardView.setVisibility(View.INVISIBLE);
                 }
-            });            animator.start();
-
+            });
+            closeAnimator.start();
         }
 
         private String getWeatherString() {
@@ -715,12 +732,12 @@ public class MainActivity extends AppCompatActivity {
                         case MotionEvent.ACTION_DOWN:
                             isTouchAddress = true;
 //                            showBackgroundAnimator(1f, BACKGROUND_ALPHA);
-                            initWeatherCardView();
+                            openWeatherCardView();
                             break;
                         case MotionEvent.ACTION_UP:
                             if (isTouchAddress) {
 //                                showBackgroundAnimator(BACKGROUND_ALPHA, 1f);
-                                dismissWeatherCardView();
+                                closeWeatherCardView();
                             }
                             isTouchAddress = false;
                             break;
