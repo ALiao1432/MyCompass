@@ -183,7 +183,6 @@ public class MainActivity extends AppCompatActivity {
         addressTextView = new TextView(this);
         addressTextView.setTextSize(20);
         addressTextView.setVisibility(View.INVISIBLE);
-        addressTextView.setBackgroundColor(Color.parseColor("#090909"));
         addressTextView.setTextColor(Color.parseColor("#757575"));
 
         // weatherCardView
@@ -463,13 +462,14 @@ public class MainActivity extends AppCompatActivity {
         }
 
         private void openWeatherCardView() {
-            Log.d(TAG, "card width : " + (wSize - weatherCardView.getWidth()) / 2);
-            Log.d(TAG, "card height : " + (hSize - weatherCardView.getHeight()) / 2);
+            ConstraintLayout.LayoutParams layoutParams = new ConstraintLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
 
             weatherCardView.setCusCardViewText(getWeatherString());
+            weatherCardView.setLayoutParams(layoutParams);
             weatherCardView.setX((wSize - weatherCardView.getWidth()) / 2);
             weatherCardView.setY((hSize - weatherCardView.getHeight()) / 2);
-            weatherCardView.setLayoutParams(new ConstraintLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            Log.d(TAG, "card width : " + (wSize - weatherCardView.getWidth()) / 2);
+            Log.d(TAG, "card height : " + (hSize - weatherCardView.getHeight()) / 2);
             openCardAnimation();
         }
 
@@ -521,12 +521,12 @@ public class MainActivity extends AppCompatActivity {
                 Wind wind = weatherData.getWind();
 
                 return  "-------------- Weather Details --------------"
-                        + "\nTemperature : " + (int)(main.getTemp() - 273.15)
+                        + "\n\nTemperature : " + (int)(main.getTemp() - 273.15)
                         + "\nPressure : " + main.getPressure()
                         + "\nHumidity : " + main.getHumidity()
                         + "\nWind speed : " + wind.getSpeed()
                         + "\nWind direction : " + wind.getDegString() + "(" + wind.getDeg() + ")"
-                        + "\n-------------------------------------------------------";
+                        + "\n\n-------------------------------------------------------";
             } else {
                 return "WeatherData is not ready!";
             }
@@ -761,9 +761,12 @@ public class MainActivity extends AppCompatActivity {
         }
 
         private void initWeatherTextView(Context context) {
+            CardView.LayoutParams layoutParams = new CardView.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT);
+            layoutParams.setMargins(50, 20, 50,20);
+
             weatherTextView = new TextView(context);
             weatherTextView.setTextAlignment(TEXT_ALIGNMENT_CENTER);
-            weatherTextView.setLayoutParams(new CardView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+            weatherTextView.setLayoutParams(layoutParams);
         }
 
         private void setCusCardViewText(String info) {
