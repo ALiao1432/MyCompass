@@ -1,8 +1,8 @@
 package com.example.ian.mycompass;
 
 import android.Manifest;
-import android.animation.ValueAnimator;
-import android.app.Activity;
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -11,7 +11,6 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Rect;
-import android.graphics.drawable.ColorDrawable;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -27,15 +26,14 @@ import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.CardView;
 import android.util.Log;
-import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewAnimationUtils;
 import android.view.ViewGroup;
-import android.view.Window;
-import android.view.WindowManager;
-import android.widget.PopupWindow;
+import android.view.animation.DecelerateInterpolator;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.google.android.gms.location.FusedLocationProviderClient;
@@ -69,14 +67,17 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = MainActivity.class.getSimpleName();
 
-    private Context context;
+//    private Context context;
     private FusedLocationProviderClient fusedLocationProviderClient;
     private Location lastLocation;
     private ResultReceiver resultReceiver;
     private SensorManager sensorManager;
     private Sensor mSensor;
     private Sensor aSensor;
+    private ConstraintLayout layout;
     private CompassView compassView;
+    private TextView addressTextView;
+    private CusWeatherCardView weatherCardView;
     private WeatherData weatherData;
 
     private float[] mSensorValue = new float[3];
@@ -128,12 +129,11 @@ public class MainActivity extends AppCompatActivity {
         final int MY_COARSE_LOCATION_REQUEST_CODE = 999;
         final int MY_FINE_LOCATION_REQUEST_CODE = 998;
 
-        context = this;
+//        context = this;
 
-        ConstraintLayout layout = findViewById(R.id.mainLayout);
-        compassView = new CompassView(this);
-
-        layout.addView(compassView);
+        layout = findViewById(R.id.mainLayout);
+        initComponentView();
+        addViewToLayout();
 
         fusedLocationProviderClient = getFusedLocationProviderClient(MainActivity.this);
         resultReceiver = new ResultReceiver(new Handler()) {
@@ -157,7 +157,6 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
-
         // check if user grant the permission
         if (this.checkPermission(Manifest.permission.ACCESS_COARSE_LOCATION, Process.myPid(), Process.myUid()) == PackageManager.PERMISSION_DENIED) {
             ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_COARSE_LOCATION}, MY_COARSE_LOCATION_REQUEST_CODE);
@@ -174,6 +173,30 @@ public class MainActivity extends AppCompatActivity {
                     .setAction("OK", view -> finish())
                     .show();
         }
+    }
+
+    private void initComponentView() {
+        // compassView
+        compassView = new CompassView(this);
+
+        // addressTextView
+        addressTextView = new TextView(this);
+        addressTextView.setTextSize(20);
+        addressTextView.setVisibility(View.INVISIBLE);
+        addressTextView.setTextColor(Color.parseColor("#757575"));
+
+        // weatherCardView
+        weatherCardView = new CusWeatherCardView(this);
+        weatherCardView.setRadius(16);
+        weatherCardView.setBackgroundColor(Color.parseColor("#fafafa"));
+        weatherCardView.setAlpha(.95f);
+        weatherCardView.setVisibility(View.INVISIBLE);
+    }
+
+    private void addViewToLayout() {
+        layout.addView(compassView);
+        layout.addView(addressTextView);
+        layout.addView(weatherCardView);
     }
 
     private void startLocationUpdates() {
@@ -378,22 +401,21 @@ public class MainActivity extends AppCompatActivity {
         private final Paint xyPaint = new Paint();
         private final Path scalePath = new Path();
         private final Path xyPath = new Path();
-        private PopupWindow popupWindow;
-        private View weatherView;
         private final List<Float> compassPoint = new ArrayList<>();
-        private String degree;
         private final Rect textRect = new Rect();
+        private Animator openAnimator;
+        private Animator closeAnimator;
+        private String degree;
         private int wSize;
         private int hSize;
-        private int textWidth;
-        private int textHeight;
         private boolean isTouchAddress = false;
 
         private final float FIX_FRAME_RADIUS = 250;
         private final float DYNAMIC_FRAME_RADIUS = 300;
         private final float DYNAMIC_FRAME_SMALL_CIRCLE_RADIUS = 6;
         private final float DYNAMIC_FRAME_GAP = (float) 360 / 40;
-        private final float BACKGROUND_ALPHA = .25f;
+//        private final float BACKGROUND_ALPHA = .25f;
+        private final long ANIMATOR_DURATION = 200;
         private final String[] COMPASS_TEXT = {
                 "N",
                 "E",
@@ -405,30 +427,6 @@ public class MainActivity extends AppCompatActivity {
             super(context);
 
             initPaints();
-
-            this.setOnTouchListener((view, motionEvent) -> {
-                switch (motionEvent.getAction()) {
-                    case MotionEvent.ACTION_DOWN:
-                        if (motionEvent.getX() > wSize / 2 - textWidth / 2
-                                && motionEvent.getX() < wSize / 2 + textWidth / 2
-                                && motionEvent.getY() > hSize - textHeight * 8
-                                && motionEvent.getY() < hSize - textHeight * 5) {
-                            isTouchAddress = true;
-                            showBackgroundAnimator(1f, BACKGROUND_ALPHA);
-                            initPopupWindow();
-                        }
-                        break;
-                    case MotionEvent.ACTION_UP:
-                        if (isTouchAddress) {
-                            showBackgroundAnimator(BACKGROUND_ALPHA, 1f);
-                        }
-                        isTouchAddress = false;
-                        dismissPopupWindow();
-                        break;
-                }
-                view.performClick();
-                return true;
-            });
         }
 
         @Override
@@ -463,26 +461,58 @@ public class MainActivity extends AppCompatActivity {
             xyPaint.setColor(Color.parseColor("#bdbdbd"));
         }
 
-        private void initPopupWindow() {
-            weatherView = LayoutInflater.from(this.getContext()).inflate(R.layout.popup_weather, null, false);
-            TextView weatherText = weatherView.findViewById(R.id.weatherText);
-            weatherText.setText(getWeatherString());
+        private void openWeatherCardView() {
+            ConstraintLayout.LayoutParams layoutParams = new ConstraintLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
 
-            popupWindow = new PopupWindow(weatherView, wSize * 4 / 5, ViewGroup.LayoutParams.WRAP_CONTENT, true);
-            popupWindow.setFocusable(false);
-            popupWindow.setBackgroundDrawable(new ColorDrawable(0x00000000));
-            popupWindow.setTouchable(true);
-            popupWindow.setTouchInterceptor((v, motionEvent) -> {
-                v.performClick();
-                return false;
-            });
-            popupWindow.showAtLocation(this, Gravity.CENTER, 0, 0);
+            weatherCardView.setCusCardViewText(getWeatherString());
+            weatherCardView.setLayoutParams(layoutParams);
+            weatherCardView.setX((wSize - weatherCardView.getWidth()) / 2);
+            weatherCardView.setY((hSize - weatherCardView.getHeight()) / 2);
+            Log.d(TAG, "card width : " + (wSize - weatherCardView.getWidth()) / 2);
+            Log.d(TAG, "card height : " + (hSize - weatherCardView.getHeight()) / 2);
+            openCardAnimation();
         }
 
-        private void dismissPopupWindow() {
-            if (popupWindow != null) {
-                popupWindow.dismiss();
+        private void openCardAnimation() {
+            int cx = weatherCardView.getWidth() / 2;
+            int cy = weatherCardView.getHeight() / 2;
+            float finalRadius = (float) Math.hypot(weatherCardView.getWidth(), weatherCardView.getHeight());
+
+            openAnimator = ViewAnimationUtils.createCircularReveal(weatherCardView, cx, cy, 0, finalRadius);
+            openAnimator.setDuration(ANIMATOR_DURATION);
+            weatherCardView.setVisibility(VISIBLE);
+            openAnimator.start();
+        }
+
+        private void closeWeatherCardView() {
+            if (openAnimator.isRunning()) {
+                openAnimator.addListener(new AnimatorListenerAdapter() {
+                    @Override
+                    public void onAnimationEnd(Animator animation) {
+                        super.onAnimationEnd(animation);
+                        closeCardAnimation();
+                    }
+                });
+            } else {
+                closeCardAnimation();
             }
+        }
+
+        private void closeCardAnimation() {
+            int cx = weatherCardView.getWidth() / 2;
+            int cy = weatherCardView.getHeight() / 2;
+            float finalRadius = (float) Math.hypot(weatherCardView.getWidth(), weatherCardView.getHeight());
+
+            closeAnimator = ViewAnimationUtils.createCircularReveal(weatherCardView, cx, cy, finalRadius, 0);
+            closeAnimator.setDuration(ANIMATOR_DURATION);
+            closeAnimator.addListener(new AnimatorListenerAdapter() {
+                @Override
+                public void onAnimationEnd(Animator animation) {
+                    super.onAnimationEnd(animation);
+                    weatherCardView.setVisibility(View.INVISIBLE);
+                }
+            });
+            closeAnimator.start();
         }
 
         private String getWeatherString() {
@@ -491,38 +521,38 @@ public class MainActivity extends AppCompatActivity {
                 Wind wind = weatherData.getWind();
 
                 return  "-------------- Weather Details --------------"
-                        + "\nTemperature : " + (int)(main.getTemp() - 273.15)
+                        + "\n\nTemperature : " + (int)(main.getTemp() - 273.15)
                         + "\nPressure : " + main.getPressure()
                         + "\nHumidity : " + main.getHumidity()
                         + "\nWind speed : " + wind.getSpeed()
                         + "\nWind direction : " + wind.getDegString() + "(" + wind.getDeg() + ")"
-                        + "\n-------------------------------------------------------";
+                        + "\n\n-------------------------------------------------------";
             } else {
                 return "WeatherData is not ready!";
             }
         }
 
-        private void showBackgroundAnimator(float from, float to) {
-            ValueAnimator animator = ValueAnimator.ofFloat(from, to);
-            animator.addUpdateListener(valueAnimator -> {
-                float alpha = (float) animator.getAnimatedValue();
-                setWindowBackgroundAlpha(alpha);
-            });
-            animator.setDuration(100);
-            animator.start();
-        }
+//        private void showBackgroundAnimator(float from, float to) {
+//            ValueAnimator animator = ValueAnimator.ofFloat(from, to);
+//            animator.addUpdateListener(valueAnimator -> {
+//                float alpha = (float) animator.getAnimatedValue();
+//                setWindowBackgroundAlpha(alpha);
+//            });
+//            animator.setDuration(100);
+//            animator.start();
+//        }
 
-        private void setWindowBackgroundAlpha(float alpha) {
-            if (context == null) {
-                return;
-            }
-            if (context instanceof Activity) {
-                Window window = ((Activity) context).getWindow();
-                WindowManager.LayoutParams layoutParams = window.getAttributes();
-                layoutParams.alpha = alpha;
-                window.setAttributes(layoutParams);
-            }
-        }
+//        private void setWindowBackgroundAlpha(float alpha) {
+//            if (context == null) {
+//                return;
+//            }
+//            if (context instanceof Activity) {
+//                Window window = ((Activity) context).getWindow();
+//                WindowManager.LayoutParams layoutParams = window.getAttributes();
+//                layoutParams.alpha = alpha;
+//                window.setAttributes(layoutParams);
+//            }
+//        }
 
         @Override
         protected void onDraw(Canvas canvas) {
@@ -538,7 +568,7 @@ public class MainActivity extends AppCompatActivity {
             drawXYChartHint(canvas);
             drawXYChart(canvas);
             drawLatitudeLongitude(canvas);
-            drawAddress(canvas);
+            addAddressTextView();
         }
 
         private void drawFixFrame(Canvas canvas) {
@@ -689,24 +719,57 @@ public class MainActivity extends AppCompatActivity {
             return c;
         }
 
-        private void drawAddress(Canvas canvas) {
+        private void addAddressTextView() {
             if (hasPermission && isGetAddressSuccess) {
-                textPaint.setTextSize(50);
-
-                textPaint.getTextBounds(addressOutput, 0, addressOutput.length(), textRect);
-                if (isTouchAddress) {
-                    textPaint.setColor(Color.parseColor("#e53935"));
-                } else {
-                    textPaint.setColor(Color.parseColor("#757575"));
-                }
-
-                canvas.drawText(addressOutput, -textRect.width() / 2, hSize / 2 - textRect.height() * 6, textPaint);
-
-                textWidth = textRect.width();
-                textHeight = textRect.height();
-                textPaint.setTextSize(200);
-                textRect.setEmpty();
+                addressTextView.setLayoutParams(new ConstraintLayout.LayoutParams(wSize, ViewGroup.LayoutParams.WRAP_CONTENT));
+                addressTextView.setVisibility(VISIBLE);
+                addressTextView.setText(addressOutput);
+                addressTextView.setY(hSize * .75f);
+                addressTextView.setTextAlignment(TEXT_ALIGNMENT_CENTER);
+                addressTextView.setOnTouchListener((view, motionEvent) -> {
+                    switch (motionEvent.getAction()) {
+                        case MotionEvent.ACTION_DOWN:
+                            isTouchAddress = true;
+//                            showBackgroundAnimator(1f, BACKGROUND_ALPHA);
+                            openWeatherCardView();
+                            break;
+                        case MotionEvent.ACTION_UP:
+                            if (isTouchAddress) {
+//                                showBackgroundAnimator(BACKGROUND_ALPHA, 1f);
+                                closeWeatherCardView();
+                            }
+                            isTouchAddress = false;
+                            break;
+                    }
+                    performClick();
+                    return true;
+                });
             }
+        }
+    }
+
+    private class CusWeatherCardView extends CardView {
+
+        private TextView weatherTextView;
+
+        public CusWeatherCardView(Context context) {
+            super(context);
+
+            initWeatherTextView(context);
+            addView(weatherTextView);
+        }
+
+        private void initWeatherTextView(Context context) {
+            CardView.LayoutParams layoutParams = new CardView.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT);
+            layoutParams.setMargins(50, 20, 50,20);
+
+            weatherTextView = new TextView(context);
+            weatherTextView.setTextAlignment(TEXT_ALIGNMENT_CENTER);
+            weatherTextView.setLayoutParams(layoutParams);
+        }
+
+        private void setCusCardViewText(String info) {
+            weatherTextView.setText(info);
         }
     }
 }
