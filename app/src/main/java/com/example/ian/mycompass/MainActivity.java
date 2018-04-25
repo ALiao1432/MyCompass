@@ -649,7 +649,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
         private void drawLatitudeLongitude(Canvas canvas) {
-
             if (hasPermission) {
                 textPaint.setTextSize(50);
 
