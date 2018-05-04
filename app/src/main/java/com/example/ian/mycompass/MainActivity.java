@@ -175,6 +175,87 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        isBackground = true;
+
+//        Log.d(TAG, "unregister sensor listener");
+        sensorManager.unregisterListener(listener);
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        isBackground = false;
+
+        if (mSensor != null || aSensor != null) {
+//            Log.d(TAG, "register sensor listener");
+            sensorManager.registerListener(listener, mSensor, SensorManager.SENSOR_DELAY_UI);
+            sensorManager.registerListener(listener, aSensor, SensorManager.SENSOR_DELAY_UI);
+        }
+
+        // need to check the permission in onResume() when hasPermission is false
+        if (!hasPermission) {
+            if (checkIfPermissionGranted(Manifest.permission.ACCESS_COARSE_LOCATION)
+                    && checkIfPermissionGranted(Manifest.permission.ACCESS_FINE_LOCATION)) {
+                hasPermission = true;
+                startLocationUpdates();
+            }
+        } else {
+            startLocationUpdates();
+        }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+
+        if (hasFocus) {
+            View decorView = getWindow().getDecorView();
+            decorView.setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+            );
+        }
+    }
+
+    private boolean checkIfPermissionGranted(final String permission) {
+        if (this.checkPermission(permission, Process.myPid(), Process.myUid()) == PackageManager.PERMISSION_GRANTED) {
+            switch (permission) {
+                case Manifest.permission.ACCESS_COARSE_LOCATION:
+                    fusedLocationProviderClient.getLastLocation()
+                            .addOnSuccessListener(this, location -> {
+                                if (location != null) {
+                                    gpsCoordinates[0] = location.getLatitude();
+                                    gpsCoordinates[1] = location.getLongitude();
+//                                    Log.d(TAG, "gpsCoordinates : " + gpsCoordinates[0] + ", " + gpsCoordinates[1]);
+                                }
+                            });
+                    break;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (checkIfPermissionGranted(Manifest.permission.ACCESS_COARSE_LOCATION)
+                && checkIfPermissionGranted(Manifest.permission.ACCESS_FINE_LOCATION)) {
+            hasPermission = true;
+            startLocationUpdates();
+        }
+    }
+
     private void initComponentView() {
         // compassView
         compassView = new CompassView(this);
@@ -200,7 +281,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void startLocationUpdates() {
-
         LocationCallback locationCallback;
         final long LOCATION_REQUEST_INTERVAL = 1000 * 60; // (1000 million * 60) sec
         final long LOCATION_REQUEST_FASTEST_INTERVAL = LOCATION_REQUEST_INTERVAL / 2;
@@ -276,17 +356,6 @@ public class MainActivity extends AppCompatActivity {
         }).start();
     }
 
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        if (checkIfPermissionGranted(Manifest.permission.ACCESS_COARSE_LOCATION)
-                && checkIfPermissionGranted(Manifest.permission.ACCESS_FINE_LOCATION)) {
-            hasPermission = true;
-            startLocationUpdates();
-        }
-    }
-
     // sensor is too sensitive, need a filter to get smooth data
     private float[] lowPassFilter(float[] input, float[] output) {
         final float LOW_PASS_FILTER_COEFFICIENT = 0.1f;
@@ -299,23 +368,6 @@ public class MainActivity extends AppCompatActivity {
             output[i] = output[i] + LOW_PASS_FILTER_COEFFICIENT * (input[i] - output[i]);
         }
         return output;
-    }
-
-    @Override
-    public void onWindowFocusChanged(boolean hasFocus) {
-        super.onWindowFocusChanged(hasFocus);
-
-        if (hasFocus) {
-            View decorView = getWindow().getDecorView();
-            decorView.setSystemUiVisibility(
-                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                            | View.SYSTEM_UI_FLAG_FULLSCREEN
-                            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-            );
-        }
     }
 
     private void calculateOrientation() {
@@ -339,59 +391,6 @@ public class MainActivity extends AppCompatActivity {
             reverseFloatValue[i] = - floatsValues[i];
         }
         compassView.invalidate();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-
-        isBackground = false;
-
-        if (mSensor != null || aSensor != null) {
-//            Log.d(TAG, "register sensor listener");
-            sensorManager.registerListener(listener, mSensor, SensorManager.SENSOR_DELAY_UI);
-            sensorManager.registerListener(listener, aSensor, SensorManager.SENSOR_DELAY_UI);
-        }
-
-        // need to check the permission in onResume() when hasPermission is false
-        if (!hasPermission) {
-            if (checkIfPermissionGranted(Manifest.permission.ACCESS_COARSE_LOCATION)
-                    && checkIfPermissionGranted(Manifest.permission.ACCESS_FINE_LOCATION)) {
-                hasPermission = true;
-                startLocationUpdates();
-            }
-        } else {
-            startLocationUpdates();
-        }
-    }
-
-    private boolean checkIfPermissionGranted(final String permission) {
-        if (this.checkPermission(permission, Process.myPid(), Process.myUid()) == PackageManager.PERMISSION_GRANTED) {
-            switch (permission) {
-                case Manifest.permission.ACCESS_COARSE_LOCATION:
-                    fusedLocationProviderClient.getLastLocation()
-                            .addOnSuccessListener(this, location -> {
-                                if (location != null) {
-                                    gpsCoordinates[0] = location.getLatitude();
-                                    gpsCoordinates[1] = location.getLongitude();
-//                                    Log.d(TAG, "gpsCoordinates : " + gpsCoordinates[0] + ", " + gpsCoordinates[1]);
-                                }
-                            });
-                    break;
-            }
-            return true;
-        }
-        return false;
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-
-        isBackground = true;
-
-//        Log.d(TAG, "unregister sensor listener");
-        sensorManager.unregisterListener(listener);
     }
 
     private class CompassView extends View {
